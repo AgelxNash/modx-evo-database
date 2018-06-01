@@ -22,14 +22,18 @@ try {
 
     echo ' [ METHOD ] query' . PHP_EOL;
     $result = $DB->query('SELECT * FROM ' . $table . ' WHERE parent = 0 ORDER BY pagetitle DESC LIMIT 10');
-    foreach ($DB->makeArray($result) as $item) {
-        echo "\t [ DOCUMENT #ID " . $item['id'] . ' ] ' . $item['pagetitle'] . PHP_EOL;
+    if ($result instanceof mysqli_result) {
+        foreach ($DB->makeArray($result) as $item) {
+            echo "\t [ DOCUMENT #ID " . $item['id'] . ' ] ' . $item['pagetitle'] . PHP_EOL;
+        }
     }
 
     echo ' [ METHOD ] select with string' . PHP_EOL;
     $result = $DB->select('*', $table, 'parent = 0', 'pagetitle DESC', '10');
-    foreach ($DB->makeArray($result) as $item) {
-        echo "\t [ DOCUMENT #ID " . $item['id'] . ' ] ' . $item['pagetitle'] . PHP_EOL;
+    if ($result instanceof mysqli_result) {
+        foreach ($DB->makeArray($result) as $item) {
+            echo "\t [ DOCUMENT #ID " . $item['id'] . ' ] ' . $item['pagetitle'] . PHP_EOL;
+        }
     }
 
     echo ' [ METHOD ] select with array' . PHP_EOL;
@@ -40,8 +44,10 @@ try {
         'ORDER BY pagetitle DESC',
         'LIMIT 10'
     );
-    foreach ($DB->makeArray($result) as $item) {
-        echo "\t [ DOCUMENT #ID " . $item['id'] . ' ] ' . $item['pagetitle'] . PHP_EOL;
+    if ($result instanceof mysqli_result) {
+        foreach ($DB->makeArray($result) as $item) {
+            echo "\t [ DOCUMENT #ID " . $item['id'] . ' ] ' . $item['pagetitle'] . PHP_EOL;
+        }
     }
 
     foreach ($DB->getAllExecutedQuery() as $id => $query) {

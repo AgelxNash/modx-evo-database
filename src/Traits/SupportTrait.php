@@ -4,6 +4,8 @@ use AgelxNash\Modx\Evo\Database\Exceptions;
 
 trait SupportTrait
 {
+    abstract public function getConfig();
+
     /**
      * @param string $table
      * @return string
@@ -147,11 +149,10 @@ trait SupportTrait
         }
 
         if ($level === 2) {
-            $data = compact('fields', 'values');
-        } else {
-            $data = (empty($fields) ? '' : $fields . ' VALUES ') . $values;
+            return compact('fields', 'values');
         }
-        return $data;
+
+        return (empty($fields) ? '' : $fields . ' VALUES ') . $values;
     }
 
     /**

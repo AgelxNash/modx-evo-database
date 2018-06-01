@@ -12,6 +12,8 @@ trait DebugTrait
     protected $lastQuery = '';
     protected $connectionTime = 0;
 
+    abstract public function getConnect();
+
     /**
      * @return string
      * @throws Exceptions\ConnectException

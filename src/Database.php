@@ -65,8 +65,8 @@ class Database implements DatabaseInterface
     }
 
     /**
-     * @param null $key
-     * @return array|mixed|null
+     * @param null|string $key
+     * @return mixed
      */
     public function getConfig($key = null)
     {
@@ -441,20 +441,22 @@ class Database implements DatabaseInterface
 
     /**
      * @param string string $name
-     * @param array|string|mysqli_result $dsq
+     * @param mixed $result
      * @return array
      * @throws Exceptions\ConnectException
      * @throws Exceptions\QueryException
      * @throws Exceptions\UnknownFetchTypeException
      */
-    public function getColumn(string $name, $dsq) : array
+    public function getColumn(string $name, $result) : array
     {
         $col = [];
-        if (! ($dsq instanceof mysqli_result)) {
-            $dsq = $this->query($dsq);
+
+        if (! ($result instanceof mysqli_result)) {
+            $result = $this->query($result);
         }
-        if ($dsq) {
-            while ($row = $this->getRow($dsq)) {
+
+        if ($result instanceof mysqli_result) {
+            while ($row = $this->getRow($result)) {
                 $col[] = $row[$name];
             }
         }
@@ -463,22 +465,24 @@ class Database implements DatabaseInterface
     }
 
     /**
-     * @param array|string|mysqli_result $dsq
+     * @param mixed $result
      * @return array
      * @throws Exceptions\ConnectException
      * @throws Exceptions\QueryException
      * @throws Exceptions\UnknownFetchTypeException
      */
-    public function getColumnNames($dsq) : array
+    public function getColumnNames($result) : array
     {
         $names = [];
-        if (! ($dsq instanceof mysqli_result)) {
-            $dsq = $this->query($dsq);
+
+        if (! ($result instanceof mysqli_result)) {
+            $result = $this->query($result);
         }
-        if ($dsq) {
-            $limit = $this->numFields($dsq);
+
+        if ($result instanceof mysqli_result) {
+            $limit = $this->numFields($result);
             for ($i = 0; $i < $limit; $i++) {
-                $names[] = $this->fieldName($dsq, $i);
+                $names[] = $this->fieldName($result, $i);
             }
         }
 
@@ -486,20 +490,22 @@ class Database implements DatabaseInterface
     }
 
     /**
-     * @param array|string|mysqli_result $dsq
+     * @param mixed $result
      * @return bool|mixed
      * @throws Exceptions\ConnectException
      * @throws Exceptions\QueryException
      * @throws Exceptions\UnknownFetchTypeException
      */
-    public function getValue($dsq)
+    public function getValue($result)
     {
         $out = false;
-        if (! ($dsq instanceof mysqli_result)) {
-            $dsq = $this->query($dsq);
+
+        if (! ($result instanceof mysqli_result)) {
+            $result = $this->query($result);
         }
-        if ($dsq) {
-            $result = $this->getRow($dsq, 'num');
+
+        if ($result instanceof mysqli_result) {
+            $result = $this->getRow($result, 'num');
             $out = $result[0] ?? false;
         }
 
@@ -518,7 +524,8 @@ class Database implements DatabaseInterface
         $metadata = [];
         if (! empty($table)) {
             $sql = 'SHOW FIELDS FROM ' . $table;
-            if ($result = $this->query($sql)) {
+            $result = $this->query($sql);
+            if ($result instanceof mysqli_result) {
                 while ($row = $this->getRow($result)) {
                     $fieldName = $row['Field'];
                     $metadata[$fieldName] = $row;
@@ -577,7 +584,7 @@ class Database implements DatabaseInterface
     public function optimize(string $table)
     {
         $result = $this->query('OPTIMIZE TABLE ' . $table);
-        if ($result) {
+        if ($result !== false) {
             $result = $this->query('ALTER TABLE ' . $table);
         }
 

@@ -18,16 +18,9 @@
 
     <rule ref="rulesets/codesize.xml">
         <exclude name="TooManyPublicMethods" />
-        <exclude name="CyclomaticComplexity" />
-        <exclude name="ExcessiveClassComplexity" />
         <exclude name="TooManyPublicMethods" />
         <exclude name="ExcessiveMethodLength" />
         <exclude name="ExcessivePublicCount" />
-    </rule>
-    <rule ref="rulesets/codesize.xml/CyclomaticComplexity">
-        <properties>
-            <property name="reportLevel" value="30"/>
-        </properties>
     </rule>
     <rule ref="rulesets/codesize.xml/ExcessiveMethodLength">
         <properties>

@@ -1,5 +1,6 @@
 <?php namespace AgelxNash\Modx\Evo\Database\Traits;
 
+use mysqli;
 use mysqli_result;
 use AgelxNash\Modx\Evo\Database\Exceptions;
 
@@ -12,11 +13,32 @@ trait DebugTrait
     protected $lastQuery = '';
     protected $connectionTime = 0;
 
-    abstract public function getConnect();
+    protected $timeFormat = '%2.5f';
+
+    /**
+      * @return mysqli
+      * @throws Exceptions\ConnectException
+      * @throws Exceptions\QueryException
+      */
+    abstract public function getConnect() : mysqli;
+
+    /**
+     * @param mysqli_result $result
+     * @return int
+     */
+    abstract public function getRecordCount(mysqli_result $result) : int;
+
+    /**
+     * @return int
+     * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
+     */
+    abstract public function getAffectedRows() : int;
 
     /**
      * @return string
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      */
     public function getLastError() : string
     {
@@ -26,6 +48,7 @@ trait DebugTrait
     /**
      * @return int
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      */
     public function getLastErrorNo() : int
     {
@@ -58,6 +81,7 @@ trait DebugTrait
      * @param int $iteration
      * @param int $time
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      */
     protected function collectQuery($result, string $sql, int $iteration, int $time) : void
     {
@@ -76,7 +100,7 @@ trait DebugTrait
 
         $this->queryCollection[$iteration] = [
             'sql' => $sql,
-            'time' => sprintf('%2.2f ms', $time * 1000),
+            'time' => sprintf($this->timeFormat, $time),
             'rows' => (stripos($sql, 'SELECT') === 0) ? $this->getRecordCount($result) : $this->getAffectedRows(),
             'path' => $path,
             //'event' => $modx->event->name,
@@ -90,7 +114,7 @@ trait DebugTrait
     /**
      * @return string
      */
-    public function lastQuery() : string
+    public function getLastQuery() : string
     {
         return $this->lastQuery;
     }
@@ -147,11 +171,11 @@ trait DebugTrait
 
     /**
      * @param bool $format
-     * @return int
+     * @return string|int
      */
-    public function getConnectionTime(bool $format = false) : int
+    public function getConnectionTime(bool $format = false)
     {
-        return $format ? sprintf('%2.4f', $this->connectionTime) : $this->connectionTime;
+        return $format ? sprintf($this->timeFormat, $this->connectionTime) : $this->connectionTime;
     }
 
     /**

@@ -4,7 +4,11 @@ use AgelxNash\Modx\Evo\Database\Exceptions;
 
 trait SupportTrait
 {
-    abstract public function getConfig();
+    /**
+     * @param null|string $key
+     * @return mixed
+     */
+    abstract public function getConfig($key = null);
 
     /**
      * @param string $table
@@ -143,7 +147,7 @@ trait SupportTrait
                 ->setData($values);
         }
 
-        if (($fields = $this->checkFields($fields, $maxLevel, $skipFieldNames))=== false) {
+        if (($fields = $this->checkFields($fields, $maxLevel, $skipFieldNames)) === false) {
             throw (new Exceptions\InvaludFieldException('fields name'))
                 ->setData($data);
         }

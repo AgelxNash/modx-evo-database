@@ -1,5 +1,6 @@
 <?php namespace AgelxNash\Modx\Evo\Database;
 
+use AgelxNash\Modx\Evo\Database\Exceptions\QueryException;
 use mysqli;
 use mysqli_result;
 use mysqli_sql_exception;
@@ -24,7 +25,7 @@ class Database implements DatabaseInterface
      * @param string $base
      * @param string $user
      * @param string $pass
-     * @param null|string $prefix
+     * @param string $prefix
      * @param string $charset
      * @param string $method
      */
@@ -33,7 +34,7 @@ class Database implements DatabaseInterface
         $base = '',
         $user = '',
         $pass = '',
-        $prefix = null,
+        $prefix = '',
         $charset = 'utf8mb4',
         $method = 'SET CHARACTER SET'
     ) {
@@ -94,7 +95,7 @@ class Database implements DatabaseInterface
      */
     public function connect() : mysqli
     {
-        $tstart = microtime(true);
+        $tStart = microtime(true);
         try {
             $this->conn = new mysqli(
                 $this->getConfig('host'),
@@ -116,13 +117,12 @@ class Database implements DatabaseInterface
             throw new Exceptions\ConnectException($exception->getMessage(), $exception->getCode());
         }
 
-        $this->query($this->getConfig('method') . ' ' . $this->getConfig('charset'));
-        $totaltime = microtime(true) - $tstart;
+        $this->setCharset($this->getConfig('charset'), $this->getConfig('method'));
+
+        $totalTime = microtime(true) - $tStart;
         if ($this->isDebug()) {
-            $this->connectionTime = $totaltime;
+            $this->connectionTime = $totalTime;
         }
-        $this->getConnect()->set_charset($this->getConfig('charset'));
-        $this->queryTime += $totaltime;
 
         return $this->conn;
     }
@@ -339,10 +339,17 @@ class Database implements DatabaseInterface
     {
         if ($where === '') {
             $mode = 'insert';
-        } elseif ($this->getRecordCount($this->select('*', $table, $where)) === 0) {
-            $mode = 'insert';
         } else {
-            $mode = 'update';
+            $result = $this->select('*', $table, $where);
+            if (! $result instanceof mysqli_result) {
+                throw (new QueryException('Need mysqli_result'))
+                    ->setQuery($this->getLastQuery());
+            }
+            if ($this->getRecordCount($result) === 0) {
+                $mode = 'insert';
+            } else {
+                $mode = 'update';
+            }
         }
 
         return ($mode === 'insert') ? $this->insert($fields, $table) : $this->update($fields, $table, $where);
@@ -390,6 +397,28 @@ class Database implements DatabaseInterface
     }
 
     /**
+     * @param string $charset
+     * @param string|null $method
+     * @return bool
+     * @throws Exceptions\ConnectException
+     * @throws QueryException
+     */
+    public function setCharset(string $charset, $method = null) : bool
+    {
+        if ($method !== null) {
+            $this->query($method . ' ' . $charset);
+        }
+
+        $tStart = microtime(true);
+
+        $result = $this->getConnect()->set_charset($charset);
+
+        $this->queryTime += microtime(true) - $tStart;
+
+        return $result;
+    }
+
+    /**
      * @param string $name
      * @return bool
      * @throws Exceptions\ConnectException
@@ -397,7 +426,13 @@ class Database implements DatabaseInterface
      */
     public function selectDb(string $name) : bool
     {
-        return $this->getConnect()->select_db($name);
+        $tStart = microtime(true);
+
+        $result = $this->getConnect()->select_db($name);
+
+        $this->queryTime += microtime(true) - $tStart;
+
+        return $result;
     }
 
     /**

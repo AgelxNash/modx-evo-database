@@ -2,4 +2,6 @@
 
 use Exception;
 
-class TableNotDefinedException extends Exception{}
+class TableNotDefinedException extends Exception
+{
+}

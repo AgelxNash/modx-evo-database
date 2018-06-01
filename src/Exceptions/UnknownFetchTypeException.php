@@ -2,4 +2,6 @@
 
 use Exception;
 
-class UnknownFetchTypeException extends Exception{}
+class UnknownFetchTypeException extends Exception
+{
+}

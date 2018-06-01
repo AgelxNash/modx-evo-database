@@ -2,5 +2,6 @@
 
 use Exception;
 
-class GetDataException extends Exception{}
-
+class GetDataException extends Exception
+{
+}

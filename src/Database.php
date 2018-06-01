@@ -7,7 +7,10 @@ use mysqli_driver;
 
 class Database implements DatabaseInterface
 {
-    const SAFE_LOOP_COUNT = 1000;
+    use Traits\DebugTrait,
+        Traits\SupportTrait;
+
+    protected const SAFE_LOOP_COUNT = 1000;
 
     /**
      * @var mysqli
@@ -15,44 +18,38 @@ class Database implements DatabaseInterface
     public $conn;
     public $config = [];
 
-    protected $debug = false;
-    protected $queryCollection = [];
-    protected $queryTime = 0;
-    protected $executedQueries = 0;
-    protected $lastQuery = '';
-    protected $connectionTime = 0;
 
     /**
      * @param string $host
-     * @param string $dbase
+     * @param string $base
      * @param string $user
      * @param string $pass
-     * @param null|string $table_prefix
+     * @param null|string $prefix
      * @param string $charset
-     * @param string $connection_method
+     * @param string $method
      */
     public function __construct(
         $host = '',
-        $dbase = '',
+        $base = '',
         $user = '',
         $pass = '',
-        $table_prefix = null,
+        $prefix = null,
         $charset = 'utf8mb4',
-        $connection_method = 'SET CHARACTER SET'
+        $method = 'SET CHARACTER SET'
     ) {
-        $dbase = trim($dbase, '`');
+        $base = trim($base, '`');
 
         $driver = new mysqli_driver();
         $driver->report_mode = MYSQLI_REPORT_STRICT | MYSQLI_REPORT_ERROR;
 
         $this->setConfig(compact(
             'host',
-            'dbase',
+            'base',
             'user',
             'pass',
-            'table_prefix',
+            'prefix',
             'charset',
-            'connection_method'
+            'method'
         ));
     }
 
@@ -79,6 +76,7 @@ class Database implements DatabaseInterface
     /**
      * @return mysqli
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      */
     public function getConnect() : mysqli
     {
@@ -92,13 +90,17 @@ class Database implements DatabaseInterface
     /**
      * @return mysqli
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      */
     public function connect() : mysqli
     {
         $tstart = microtime(true);
         try {
             $this->conn = new mysqli(
-                $this->getConfig('host'), $this->getConfig('user'), $this->getConfig('pass'), $this->getConfig('dbase')
+                $this->getConfig('host'),
+                $this->getConfig('user'),
+                $this->getConfig('pass'),
+                $this->getConfig('base')
             );
 
             if ($this->isConnected() && $this->getConnect()->connect_error) {
@@ -106,17 +108,18 @@ class Database implements DatabaseInterface
             }
 
             if (! $this->isConnected()) {
-                throw new Exceptions\ConnectException($this->getLastError() ?: 'Failed to create the database connection!');
+                throw new Exceptions\ConnectException(
+                    $this->getLastError() ?: 'Failed to create the database connection!'
+                );
             }
-
-        } catch(mysqli_sql_exception $exception) {
+        } catch (mysqli_sql_exception $exception) {
             throw new Exceptions\ConnectException($exception->getMessage(), $exception->getCode());
         }
 
-        $this->query($this->getConfig('connection_method') . ' ' . $this->getConfig('charset'));
+        $this->query($this->getConfig('method') . ' ' . $this->getConfig('charset'));
         $totaltime = microtime(true) - $tstart;
-        if ($this->getDebug()) {
-                $this->connectionTime = $totaltime;
+        if ($this->isDebug()) {
+            $this->connectionTime = $totaltime;
         }
         $this->getConnect()->set_charset($this->getConfig('charset'));
         $this->queryTime += $totaltime;
@@ -148,37 +151,39 @@ class Database implements DatabaseInterface
     }
 
     /**
-     * @param $s
+     * @param string|array $data
      * @param int $safeCount
      * @return array|string
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      * @throws Exceptions\TooManyLoopsException
      */
-    public function escape($s, $safeCount = 0)
+    public function escape($data, $safeCount = 0)
     {
         $safeCount++;
         if (self::SAFE_LOOP_COUNT < $safeCount) {
             throw new Exceptions\TooManyLoopsException("Too many loops '{$safeCount}'");
         }
-        if (\is_array($s)) {
-            if (\count($s) === 0) {
-                $s = '';
+        if (\is_array($data)) {
+            if (\count($data) === 0) {
+                $data = '';
             } else {
-                foreach ($s as $i => $v) {
-                    $s[$i] = $this->escape($v, $safeCount);
+                foreach ($data as $i => $v) {
+                    $data[$i] = $this->escape($v, $safeCount);
                 }
             }
         } else {
-            $s = $this->getConnect()->escape_string($s);
+            $data = $this->getConnect()->escape_string($data);
         }
 
-        return $s;
+        return $data;
     }
 
     /**
-     * @param string|array $sql
+     * @param mixed $sql
      * @return bool|mysqli_result
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      */
     public function query($sql)
     {
@@ -188,9 +193,9 @@ class Database implements DatabaseInterface
         }
         $this->lastQuery = $sql;
 
-        try{
+        try {
             $result = $this->getConnect()->query($sql);
-        } catch(mysqli_sql_exception $exception) {
+        } catch (mysqli_sql_exception $exception) {
             throw new Exceptions\QueryException($exception->getMessage(), $exception->getCode());
         }
 
@@ -200,7 +205,7 @@ class Database implements DatabaseInterface
             $tend = microtime(true);
             $totalTime = $tend - $tStart;
             $this->queryTime += $totalTime;
-            if ($this->getDebug()) {
+            if ($this->isDebug()) {
                 $this->collectQuery(
                     $result,
                     $sql,
@@ -216,125 +221,63 @@ class Database implements DatabaseInterface
     }
 
     /**
-     * @param string $from
-     * @param string $where
-     * @param string $orderBy
-     * @param string $limit
-     * @return bool|mysqli_result
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\TableNotDefinedException
-     */
-    public function delete($from, $where = '', $orderBy = '', $limit = '')
-    {
-        if (! is_scalar($from) || empty($from)) {
-            throw new Exceptions\TableNotDefinedException($from);
-        }
-
-        $where = trim($where);
-        if (! empty($where) && stripos($where, 'WHERE') !== 0) {
-            $where = "WHERE {$where}";
-        }
-
-        $orderBy = trim($orderBy);
-        if (! empty($orderBy) && stripos($orderBy, 'ORDER BY') !== 0) {
-            $orderBy = "ORDER BY {$orderBy}";
-        }
-
-        $limit = trim($limit);
-        if (! empty($limit) && stripos($limit, 'LIMIT') !== 0) {
-            $limit = "LIMIT {$limit}";
-        }
-
-        return $this->query("DELETE FROM {$from} {$where} {$orderBy} {$limit}");
-    }
-
-    /**
-     * @param array|string $fields
-     * @param array|string $from
+     * @param string $table
      * @param array|string $where
      * @param string $orderBy
      * @param string $limit
      * @return bool|mysqli_result
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      * @throws Exceptions\TableNotDefinedException
      */
-    public function select($fields = '*', $from, $where = '', $orderBy = '', $limit = '')
+    public function delete($table, $where = '', $orderBy = '', $limit = '')
     {
-        if (\is_array($fields)) {
-            if (empty($fields)) {
-                $fields = '*';
-            } else {
-                $_ = array();
-                foreach ($fields as $k => $v) {
-                    $_[] = ($k !== $v) ? ($v . ' as ' . $k) : $v;
-                }
+        $table = $this->prepareFrom($table);
+        $where = $this->prepareWhere($where);
+        $orderBy = $this->prepareOrder($orderBy);
+        $limit = $this->prepareOrder($limit);
 
-                $fields = implode(',', $_);
-            }
-        }
-        if (\is_array($from)) {
-            $_ = array();
-            foreach ($from as $k => $v) {
-                $_[] = $v;
-            }
-            $from = implode(' ', $_);
-        }
-        if (! is_scalar($from) || empty($from)) {
-            throw new Exceptions\TableNotDefinedException($from);
-        }
-
-        if (\is_array($where)) {
-            $where = implode(' ', $where);
-        }
-        $where = trim($where);
-        if ($where !== '' && stripos($where, 'WHERE') !== 0) {
-            $where = "WHERE {$where}";
-        }
-
-        $orderBy = trim($orderBy);
-        if ($orderBy !== '' && stripos($orderBy, 'ORDER') !== 0) {
-            $orderBy = "ORDER BY {$orderBy}";
-        }
-
-        $limit = trim($limit);
-        if ($limit !== '' && stripos($limit, 'LIMIT') !== 0) {
-            $limit = "LIMIT {$limit}";
-        }
-
-        return $this->query("SELECT {$fields} FROM {$from} {$where} {$orderBy} {$limit}");
+        return $this->query("DELETE FROM {$table} {$where} {$orderBy} {$limit}");
     }
 
     /**
      * @param array|string $fields
-     * @param string $table
-     * @param string $where
+     * @param array|string $tables
+     * @param array|string $where
+     * @param string $orderBy
+     * @param string $limit
      * @return bool|mysqli_result
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      * @throws Exceptions\TableNotDefinedException
      */
-    public function update($fields, string $table, $where = '')
+    public function select($fields, $tables, $where = '', $orderBy = '', $limit = '')
     {
-        if (! is_scalar($table) || empty($table)) {
-            throw new Exceptions\TableNotDefinedException($table);
-        }
+        $fields = $this->prepareFields($fields);
+        $tables = $this->prepareFrom($tables, true);
+        $where = $this->prepareWhere($where);
+        $orderBy = $this->prepareOrder($orderBy);
+        $limit = $this->prepareLimit($limit);
 
-        if (\is_array($fields)) {
-            foreach ($fields as $key => $value) {
-                if ($value === null || strtolower($value) === 'null') {
-                    $f = 'NULL';
-                } else {
-                    $f = "'" . $value . "'";
-                }
-                $fields[$key] = "`{$key}` = " . $f;
-            }
-            $fields = implode(',', $fields);
-        }
-        $where = trim($where);
-        if ($where !== '' && stripos($where, 'WHERE') !== 0) {
-            $where = 'WHERE '.$where;
-        }
+        return $this->query("SELECT {$fields} FROM {$tables} {$where} {$orderBy} {$limit}");
+    }
 
-        return $this->query("UPDATE {$table} SET {$fields} {$where}");
+    /**
+     * @param array|string $values
+     * @param string $table
+     * @param array|string $where
+     * @return bool|mysqli_result
+     * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
+     * @throws Exceptions\TableNotDefinedException
+     */
+    public function update($values, string $table, $where = '')
+    {
+        $table = $this->prepareFrom($table);
+        $values = $this->prepareValuesSet($values);
+        $where = $this->prepareWhere($where);
+
+        return $this->query("UPDATE {$table} SET {$values} {$where}");
     }
 
     /**
@@ -342,42 +285,35 @@ class Database implements DatabaseInterface
      * @param string $table
      * @param string $fromfields
      * @param string $fromtable
-     * @param string $where
+     * @param array|string $where
      * @param string $limit
      * @return mixed
      * @throws Exceptions\ConnectException
      * @throws Exceptions\GetDataException
+     * @throws Exceptions\QueryException
      * @throws Exceptions\TableNotDefinedException
+     * @throws Exceptions\TooManyLoopsException
      */
     public function insert(
         $fields,
         string $table,
         string $fromfields = '*',
         string $fromtable = '',
-        string $where = '',
+        $where = '',
         string $limit = ''
-    )
-    {
-        if (! is_scalar($table) || empty($table)) {
-            throw new Exceptions\TableNotDefinedException($table);
-        }
+    ) {
+        $table = $this->prepareFrom($table);
 
         if (is_scalar($fields)) {
             $this->query("INSERT INTO {$table} {$fields}");
         } else {
             if (empty($fromtable) && \is_array($fields)) {
-                $fields = '(`' . implode('`, `', array_keys($fields)) . "`) VALUES ('" . implode("', '", array_values($fields)) . "')";
+                $fields = $this->prepareValues($fields);
                 $this->query("INSERT INTO {$table} {$fields}");
             } else {
-                $fields = '(' . implode(',', array_keys($fields)) . ')';
-                $where = trim($where);
-                $limit = trim($limit);
-                if ($where !== '' && stripos($where, 'WHERE') !== 0) {
-                    $where = "WHERE {$where}";
-                }
-                if ($limit !== '' && stripos($limit, 'LIMIT') !== 0) {
-                    $limit = "LIMIT {$limit}";
-                }
+                $fields = $this->prepareValues($fields, 2, true)['values'];
+                $where = $this->prepareWhere($where);
+                $limit = $this->prepareLimit($limit);
                 $this->query("INSERT INTO {$table} {$fields} SELECT {$fromfields} FROM {$fromtable} {$where} {$limit}");
             }
         }
@@ -395,7 +331,9 @@ class Database implements DatabaseInterface
      * @return bool|mixed|mysqli_result
      * @throws Exceptions\ConnectException
      * @throws Exceptions\GetDataException
+     * @throws Exceptions\QueryException
      * @throws Exceptions\TableNotDefinedException
+     * @throws Exceptions\TooManyLoopsException
      */
     public function save($fields, string $table, string $where = '')
     {
@@ -411,140 +349,86 @@ class Database implements DatabaseInterface
     }
 
     /**
-     * @param $rs
+     * @param $result
      * @return bool
      */
-    public function isResult($rs) : bool
+    public function isResult($result) : bool
     {
-        return $rs instanceof mysqli_result;
+        return $result instanceof mysqli_result;
     }
 
     /**
-     * @param mysqli_result $rs
+     * @param mysqli_result $result
      * @return $this
      */
-    public function freeResult(mysqli_result $rs) : self
+    public function freeResult(mysqli_result $result) : self
     {
-        $rs->free_result();
+        $result->free_result();
 
         return $this;
     }
 
     /**
-     * @param mysqli_result $rs
+     * @param mysqli_result $result
      * @return int
      */
-    public function numFields(mysqli_result $rs) : int
+    public function numFields(mysqli_result $result) : int
     {
-        return $rs->field_count;
+        return $result->field_count;
     }
 
     /**
-     * @param mysqli_result $rs
+     * @param mysqli_result $result
      * @param int $col
      * @return string|null
      */
-    public function fieldName(mysqli_result $rs, $col = 0) :? string
+    public function fieldName(mysqli_result $result, $col = 0) :? string
     {
-        $field = $rs->fetch_field_direct($col);
+        $field = $result->fetch_field_direct($col);
 
         return $field->name ?? null;
     }
 
     /**
-     * @param $name
-     * @throws Exceptions\ConnectException
+     * @param string $name
      * @return bool
+     * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      */
-    public function selectDb($name) : bool
+    public function selectDb(string $name) : bool
     {
         return $this->getConnect()->select_db($name);
     }
 
     /**
-     * @return mixed
-     * @throws Exceptions\ConnectException
-     */
-    public function getInsertId()
-    {
-        return $this->getConnect()->insert_id;
-    }
-
-    /**
-     * @return int
-     * @throws Exceptions\ConnectException
-     */
-    public function getAffectedRows() : int
-    {
-        return $this->getConnect()->affected_rows;
-    }
-
-    /**
-     * @return string
-     * @throws Exceptions\ConnectException
-     */
-    public function getLastError() : string
-    {
-        return $this->getConnect()->error;
-    }
-
-    /**
-     * @return int
-     * @throws Exceptions\ConnectException
-     */
-    public function getLastErrorNo() : int
-    {
-        return $this->getConnect()->errno;
-    }
-
-    /**
-     * @param null $query
-     * @throws Exceptions\ConnectException
-     */
-    public function checkLastError($query = null) : void
-    {
-        switch ($this->getLastErrorNo()) {
-            case 1054:
-            case 1060:
-            case 1061:
-            case 1062:
-            case 1091:
-                break;
-            default:
-                throw (new Exceptions\QueryException($this->getLastError()))
-                    ->setQuery($query);
-        }
-    }
-
-    /**
-     * @param mysqli_result $ds
+     * @param mysqli_result $result
      * @return int
      */
-    public function getRecordCount(mysqli_result $ds) : int
+    public function getRecordCount(mysqli_result $result) : int
     {
-        return $ds->num_rows;
+        return $result->num_rows;
     }
 
     /**
-     * @param mysqli_result $ds
+     * @param mysqli_result $result
      * @param string $mode
      * @return array|mixed|object|\stdClass
      * @throws Exceptions\UnknownFetchTypeException
      */
-    public function getRow(mysqli_result $ds, $mode = 'assoc')
+    public function getRow(mysqli_result $result, $mode = 'assoc')
     {
-        switch($mode){
+        switch ($mode) {
             case 'assoc':
-                $out = $ds->fetch_assoc();
+                $out = $result->fetch_assoc();
                 break;
             case 'num':
-                $out = $ds->fetch_row();
+                $out = $result->fetch_row();
                 break;
             case 'object':
-                $out = $ds->fetch_object();
+                $out = $result->fetch_object();
                 break;
             case 'both':
-                $out = $ds->fetch_array(MYSQLI_BOTH);
+                $out = $result->fetch_array(MYSQLI_BOTH);
                 break;
             default:
                 throw new Exceptions\UnknownFetchTypeException(
@@ -560,12 +444,13 @@ class Database implements DatabaseInterface
      * @param array|string|mysqli_result $dsq
      * @return array
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      * @throws Exceptions\UnknownFetchTypeException
      */
     public function getColumn(string $name, $dsq) : array
     {
         $col = [];
-        if ( ! ($dsq instanceof mysqli_result)) {
+        if (! ($dsq instanceof mysqli_result)) {
             $dsq = $this->query($dsq);
         }
         if ($dsq) {
@@ -581,11 +466,13 @@ class Database implements DatabaseInterface
      * @param array|string|mysqli_result $dsq
      * @return array
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
+     * @throws Exceptions\UnknownFetchTypeException
      */
     public function getColumnNames($dsq) : array
     {
         $names = [];
-        if ( ! ($dsq instanceof mysqli_result)) {
+        if (! ($dsq instanceof mysqli_result)) {
             $dsq = $this->query($dsq);
         }
         if ($dsq) {
@@ -602,17 +489,18 @@ class Database implements DatabaseInterface
      * @param array|string|mysqli_result $dsq
      * @return bool|mixed
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      * @throws Exceptions\UnknownFetchTypeException
      */
     public function getValue($dsq)
     {
         $out = false;
-        if ( ! ($dsq instanceof mysqli_result)) {
+        if (! ($dsq instanceof mysqli_result)) {
             $dsq = $this->query($dsq);
         }
         if ($dsq) {
-            $r = $this->getRow($dsq, 'num');
-            $out = $r[0] ?? false;
+            $result = $this->getRow($dsq, 'num');
+            $out = $result[0] ?? false;
         }
 
         return $out;
@@ -622,15 +510,16 @@ class Database implements DatabaseInterface
      * @param string $table
      * @return array
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      * @throws Exceptions\UnknownFetchTypeException
      */
     public function getTableMetaData(string $table) : array
     {
         $metadata = [];
         if (! empty($table)) {
-            $sql = 'SHOW FIELDS FROM '.$table;
-            if ($ds = $this->query($sql)) {
-                while ($row = $this->getRow($ds)) {
+            $sql = 'SHOW FIELDS FROM ' . $table;
+            if ($result = $this->query($sql)) {
+                while ($row = $this->getRow($result)) {
                     $fieldName = $row['Field'];
                     $metadata[$fieldName] = $row;
                 }
@@ -641,45 +530,16 @@ class Database implements DatabaseInterface
     }
 
     /**
-     * @param int $timestamp
-     * @param string $fieldType
-     * @return bool|false|string
-     */
-    public function prepareDate(int $timestamp, string $fieldType = 'DATETIME')
-    {
-        $date = false;
-        if (! empty($timestamp) && $timestamp > 0) {
-            switch ($fieldType) {
-                case 'DATE' :
-                    $date = date('Y-m-d', $timestamp);
-                    break;
-                case 'TIME' :
-                    $date = date('H:i:s', $timestamp);
-                    break;
-                case 'YEAR' :
-                    $date = date('Y', $timestamp);
-                    break;
-                case 'DATETIME':
-                default :
-                    $date = date('Y-m-d H:i:s', $timestamp);
-                    break;
-            }
-        }
-
-        return $date;
-    }
-
-    /**
-     * @param mysqli_result $rs
+     * @param mysqli_result $result
      * @param bool $index
      * @return array
      * @throws Exceptions\UnknownFetchTypeException
      */
-    public function makeArray(mysqli_result $rs, bool $index = false) : array
+    public function makeArray(mysqli_result $result, bool $index = false) : array
     {
         $rsArray = [];
         $iterator = 0;
-        while ($row = $this->getRow($rs)) {
+        while ($row = $this->getRow($result)) {
             $returnIndex = $index !== false && isset($row[$index]) ? $row[$index] : $iterator;
             $rsArray[$returnIndex] = $row;
             $iterator++;
@@ -689,8 +549,19 @@ class Database implements DatabaseInterface
     }
 
     /**
+     * @param mysqli_result $result
+     * @param int $row
+     * @return bool
+     */
+    public function dataSeek(mysqli_result $result, int $row) : bool
+    {
+        return $result->data_seek($row);
+    }
+
+    /**
      * @return string
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      */
     public function getVersion() : string
     {
@@ -701,180 +572,46 @@ class Database implements DatabaseInterface
      * @param string $table
      * @return bool|mysqli_result
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      */
     public function optimize(string $table)
     {
-        $rs = $this->query('OPTIMIZE TABLE '.$table);
-        if ($rs) {
-            $rs = $this->query('ALTER TABLE '.$table);
+        $result = $this->query('OPTIMIZE TABLE ' . $table);
+        if ($result) {
+            $result = $this->query('ALTER TABLE ' . $table);
         }
 
-        return $rs;
+        return $result;
     }
 
     /**
      * @param string $table
      * @return bool|mysqli_result
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      */
     public function truncate(string $table)
     {
-        return $this->query('TRUNCATE '.$table);
+        return $this->query('TRUNCATE ' . $table);
     }
 
     /**
-     * @param mysqli_result $result
-     * @param int $row_number
-     * @return bool
-     */
-    public function dataSeek(mysqli_result $result, int $row_number) : bool
-    {
-        return $result->data_seek($row_number);
-    }
-
-    /**
-     * @param mysqli_result|bool $result
-     * @param string $sql
-     * @param int $iteration
-     * @param int $time
+     * @return mixed
      * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      */
-    protected function collectQuery($result, string $sql, int $iteration, int $time) : void
+    public function getInsertId()
     {
-        $debug = debug_backtrace();
-        array_shift($debug);
-        array_shift($debug);
-        $path = array();
-        foreach ($debug as $line) {
-            $path[] = ($line['class'] ? ($line['class'] . '::') : null) . $line['function'];
-            /*$path[] = [
-                'method' => ($line['class'] ? ($line['class'] . '::') : null) . $line['function'],
-                'file' => ($line['file'] ? ($line['file'] . ':') : null) . ($line['line'] ?? 0)
-            ];*/
-        }
-        $path = implode(' > ', array_reverse($path));
-
-        $this->queryCollection[$iteration] = [
-            'sql' => $sql,
-            'time' => sprintf('%2.2f ms',$time * 1000),
-            'rows' => (stripos($sql, 'SELECT') === 0) ? $this->getRecordCount($result) : $this->getAffectedRows(),
-            'path' => $path,
-            //'event' => $modx->event->name,
-            //'element' => [
-            //      'name' => $modx->event->activePlugin ?? ($modx->currentSnippet ?? null),
-            //      'type' => $modx->event->activePlugin ? 'Plugin' : ($modx->currentSnippet ? 'Snippet' : 'Source code')
-            // ]
-        ];
-
+        return $this->getConnect()->insert_id;
     }
 
     /**
-     * @return string
-     */
-    public function lastQuery() : string
-    {
-        return $this->lastQuery;
-    }
-
-    /**
-     * @return array
-     */
-    public function getAllExecutedQuery() : array
-    {
-        return $this->queryCollection;
-    }
-
-    public function flushExecutedQuery() : self
-    {
-        $this->queryCollection = [];
-        $this->executedQueries = 0;
-        $this->queryTime = 0;
-        $this->lastQuery = '';
-    }
-
-    /**
-     * @return string
-     */
-    public function renderExecutedQuery() : string
-    {
-        $out = '';
-
-        foreach ($this->getAllExecuteQuery() as $i => $query) {
-            $out .= '<fieldset style="text-align:left">';
-            $out .= '<legend>Query ' . $i . ' - ' . $query['time'] . '</legend>';
-            $out .= $query['sql'] . '<br><br>';
-            if (! empty($query['element'])) {
-                $out .= $query['element']['type'] . '  => ' . $query['element']['name'] . '<br>';
-            }
-            if (! empty($query['event'])) {
-                $out .= 'Current Event  => ' . $query['event'] . '<br>';
-            }
-            $out .= 'Affected Rows => ' . $query['rows'] . '<br>';
-            if (! empty($query['path'])) {
-                $out .= 'Functions Path => ' . $query['path'] . '<br>';
-            }
-            /*$out .= 'Functions Path => ' . $query['path']['method'] . '<br>';
-            $out .= empty($query['path']['file']) ?: $query['path']['file'] . '<br />';*/
-            $out .= '</fieldset><br />';
-        }
-
-        return $out;
-    }
-
-    /**
-     * @param bool $format
      * @return int
+     * @throws Exceptions\ConnectException
+     * @throws Exceptions\QueryException
      */
-    public function getConnectionTime(bool $format = false) : int
+    public function getAffectedRows() : int
     {
-        return $format ? sprintf('%2.4f', $this->connectionTime) : $this->connectionTime;
-    }
-
-    /**
-     * @return string
-     */
-    public function renderConnectionTime() : string
-    {
-        return '<fieldset style="text-align:left">' .
-                    '<legend>Database connection</legend>' .
-                    'Database connection was created in ' . $this->getConnectionTime(true) . ' s.' .
-                '</fieldset>' .
-                '<br />';
-    }
-
-    /**
-     * @param bool $flag
-     * @return $this
-     */
-    public function setDebug(bool $flag) : self
-    {
-        $this->debug = $flag;
-
-        return $this;
-    }
-
-    /**
-     * @return bool
-     */
-    public function getDebug() : bool
-    {
-        return $this->debug;
-    }
-
-    /**
-     * @param string $table
-     * @return string
-     * @throws Exceptions\TableNotDefinedException
-     */
-    public function getFullTableName(string $table) : string
-    {
-        if(empty($table)) {
-            throw new Exceptions\TableNotDefinedException($table);
-        }
-
-        return implode('.', [
-            '`' . $this->getConfig('dbase') . '`',
-            '`' . $this->getConfig('table_prefix') . $table . '`'
-        ]);
+        return $this->getConnect()->affected_rows;
     }
 }

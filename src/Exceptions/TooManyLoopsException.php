@@ -2,4 +2,6 @@
 
 use Exception;
 
-class TooManyLoopsException extends Exception{}
+class TooManyLoopsException extends Exception
+{
+}

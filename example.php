@@ -1,4 +1,5 @@
 <?php
+
 include_once 'vendor/autoload.php';
 
 $DB = new AgelxNash\Modx\Evo\Database\Database(
@@ -11,24 +12,45 @@ $DB = new AgelxNash\Modx\Evo\Database\Database(
     'SET NAMES'
 );
 $DB->setDebug(true);
+
 try {
     $DB->connect();
-    print ' [ CONNECTION TIME ] ' . $DB->getConnectionTime(true) . ' s. ' . PHP_EOL;
-    print ' [ VERSION ] '. $DB->getVersion() . PHP_EOL;
+    echo ' [ CONNECTION TIME ] ' . $DB->getConnectionTime(true) . ' s. ' . PHP_EOL;
+    echo ' [ VERSION ] ' . $DB->getVersion() . PHP_EOL;
 
-    $result = $DB->query("SELECT * FROM " . $DB->getFullTableName('site_content') . " WHERE parent = 0");
+    $table = $DB->getFullTableName('site_content');
+
+    echo ' [ METHOD ] query' . PHP_EOL;
+    $result = $DB->query('SELECT * FROM ' . $table . ' WHERE parent = 0 ORDER BY pagetitle DESC LIMIT 10');
     foreach ($DB->makeArray($result) as $item) {
-        print ' [ DOCUMENT #ID ' . $item['id'] . ' ] ' . $item['pagetitle'] . PHP_EOL;
+        echo "\t [ DOCUMENT #ID " . $item['id'] . ' ] ' . $item['pagetitle'] . PHP_EOL;
+    }
+
+    echo ' [ METHOD ] select with string' . PHP_EOL;
+    $result = $DB->select('*', $table, 'parent = 0', 'pagetitle DESC', '10');
+    foreach ($DB->makeArray($result) as $item) {
+        echo "\t [ DOCUMENT #ID " . $item['id'] . ' ] ' . $item['pagetitle'] . PHP_EOL;
+    }
+
+    echo ' [ METHOD ] select with array' . PHP_EOL;
+    $result = $DB->select(
+        ['id', 'pagetitle', 'title' => 'longtitle'],
+        ['c' => $table],
+        ['parent = 0'],
+        'ORDER BY pagetitle DESC',
+        'LIMIT 10'
+    );
+    foreach ($DB->makeArray($result) as $item) {
+        echo "\t [ DOCUMENT #ID " . $item['id'] . ' ] ' . $item['pagetitle'] . PHP_EOL;
     }
 
     foreach ($DB->getAllExecutedQuery() as $id => $query) {
-        print ' [ QUERY #'. $id . ' ] ' . PHP_EOL;
+        echo ' [ QUERY #' . $id . ' ] ' . PHP_EOL;
         foreach ($query as $key => $data) {
-            print "\t [" . $key . '] ' . $data . PHP_EOL;
+            echo "\t [" . $key . '] ' . $data . PHP_EOL;
         }
     }
-    print ' [ DONE ] ' . PHP_EOL;
-
+    echo ' [ DONE ] ' . PHP_EOL;
 } catch (Exception $exception) {
     echo get_class($exception) . PHP_EOL;
     echo "\t" . $exception->getMessage() . PHP_EOL;

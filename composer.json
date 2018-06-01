@@ -1,0 +1,26 @@
+{
+  "name": "agelxnash/modx-evo-database",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "agel_nash",
+      "email": "modx@agel-nash.ru"
+    }
+  ],
+  "require": {
+  },
+  "autoload":{
+    "psr-4": {
+      "AgelxNash\\Modx\\Evo\\Database\\": "src/"
+    }
+  },
+  "config": {
+    "preferred-install": "dist",
+    "prestissimo": {
+      "maxConnections": 6,
+      "minConnections": 3
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}

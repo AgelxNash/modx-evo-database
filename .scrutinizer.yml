@@ -30,9 +30,8 @@ build:
         before:
             - mysql -h 127.0.0.1 -u root -e "SET GLOBAL sql_mode = ''"
             - mysql -h 127.0.0.1 -u root -e 'create database modx'
-            - curl 'https://raw.githubusercontent.com/evolution-cms/evolution/develop/install/setup.sql' -o setup.sql
-            - mysql -h 127.0.0.1 -u root modx < setup.sql
-            - rm -rf setup.sql
+            - mysql -h 127.0.0.1 -u root modx < install/tables/site_content.sql
+            - mysql -h 127.0.0.1 -u root modx < install/data/site_content.sql
     nodes:
         analysis:
             project_setup:

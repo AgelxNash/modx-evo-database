@@ -12,12 +12,6 @@ class DatabaseTest extends TestCase
 
     protected function setUp()
     {
-        if (! extension_loaded('mysqli')) {
-            $this->markTestSkipped(
-                'The MySQLi extension is not available.'
-            );
-        }
-
         $this->instance = new Database\Database();
     }
 

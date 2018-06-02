@@ -1,0 +1,80 @@
+filter:
+    paths:
+        - 'src/*'
+    excluded_paths:
+        - 'example.php'
+        - 'test/*'
+        - 'vendor/*'
+build:
+    environment:
+        hosts:
+          modx.local: '127.0.0.1'
+        apache2:
+          modules: ['rewrite']
+          sites:
+            modx:
+                web_root: 'web/'
+                host: 'modx.local'
+                rules:
+                  - 'RewriteEngine On'
+                  - 'RewriteBase /'
+                  - 'RewriteCond %{HTTP_USER_AGENT} ^.*internal\ dummy\ connection.*$ [NC]'
+                  - 'RewriteRule .* - [F,L]'
+                  - 'RewriteRule ^(manager|assets|js|css|images|img)/.*$ - [L]'
+                  - 'RewriteRule \.(jpg|jpeg|png|gif|ico)$ - [L]'
+                  - 'RewriteCond %{REQUEST_FILENAME} !-f'
+                  - 'RewriteCond %{REQUEST_FILENAME} !-d'
+                  - 'RewriteRule ^(.*)$ index.php?q=$1 [L,QSA]'
+        php:
+          version: 7.1
+          ini:
+            'date.timezone': 'Europe/Moscow'
+        mysql: 5.5             # 5.5 or 5.6 or 5.7
+        mongodb: false
+        postgresql: false
+        neo4j: false
+        memcached: false
+        redis: false
+        rabbitmq: false
+        variables:
+          DB_HOST: '127.0.0.1'
+          DB_BASE: 'modx'
+          DB_USER: 'root'
+          DB_PASSWORD: ''
+          DB_PREFIX: '{PREFIX}'
+          DB_CHARSET: 'utf8mb4'
+          DB_METHOD: 'SET NAMES'
+    dependencies:
+        before:
+            - mysql -h 127.0.0.1 -u root -e "SET GLOBAL sql_mode = ''"
+            - mysql -h 127.0.0.1 -u root -e 'create database modx'
+            - curl 'https://raw.githubusercontent.com/evolution-cms/evolution/develop/install/setup.sql' -o setup.sql
+            - mysql -h 127.0.0.1 -u root modx < setup.sql
+            - rm -rf setup.sql
+    nodes:
+        analysis:
+            project_setup:
+                override:
+                    - 'true'
+            tests:
+                override:
+                    - php-scrutinizer-run
+                    -
+                        command: phpcs-run
+                        use_website_config: true
+                    -
+                        command: 'vendor/bin/phpunit --coverage-clover=coverage.clover'
+                        coverage:
+                            file: 'coverage.clover'
+                            format: 'clover'
+        tests: true
+
+checks:
+    php: true
+
+
+coding_style:
+    php:
+        spaces:
+            around_operators:
+                concatenation: true

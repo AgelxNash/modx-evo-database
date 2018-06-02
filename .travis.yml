@@ -5,6 +5,16 @@ php:
   - 7.2
   - nightly
 
+env:
+  global:
+    - DB_HOST='127.0.0.1'
+    - DB_BASE='modx'
+    - DB_USER='root'
+    - DB_PASSWORD=''
+    - DB_PREFIX='{PREFIX}'
+    - DB_CHARSET='utf8mb4'
+    - DB_METHOD='SET NAMES'
+
 services:
   - mysql
 
@@ -12,9 +22,17 @@ branches:
   only:
     - master
 
-before_install: composer self-update
+before_install:
+  - composer self-update
 
 install: composer install
+
+before_script:
+  - mysql -h 127.0.0.1 -u root -e 'create database modx;'
+  - mysql -h 127.0.0.1 -u root -e 'create database modx'
+  - curl 'https://raw.githubusercontent.com/evolution-cms/evolution/develop/install/setup.sql' -o setup.sql
+  - mysql -h 127.0.0.1 -u root modx < setup.sql
+  - rm -rf setup.sql
 
 script:
   - ./vendor/bin/phpunit --coverage-text --coverage-clover=coverage.clover

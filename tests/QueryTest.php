@@ -20,13 +20,13 @@ class QueryTest extends TestCase
         }
 
         $this->instance = new Database\Database(
-            $_ENV['DB_HOST'] ?? 'localhost',
-            $_ENV['DB_BASE'] ?? 'modx',
-            $_ENV['DB_USER'] ?? 'homestead',
-            $_ENV['DB_PASSWORD'] ?? 'secret',
-            $_ENV['DB_PREFIX'] ?? 'modx_',
-            $_ENV['DB_CHARSET'] ?? 'utf8mb4',
-            $_ENV['DB_METHOD'] ?? 'SET NAMES'
+            $_SERVER['DB_HOST'] ?? 'localhost',
+            $_SERVER['DB_BASE'] ?? 'modx',
+            $_SERVER['DB_USER'] ?? 'homestead',
+            $_SERVER['DB_PASSWORD'] ?? 'secret',
+            $_SERVER['DB_PREFIX'] ?? 'modx_',
+            $_SERVER['DB_CHARSET'] ?? 'utf8mb4',
+            $_SERVER['DB_METHOD'] ?? 'SET NAMES'
         );
     }
 

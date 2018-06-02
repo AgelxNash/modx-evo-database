@@ -7,24 +7,6 @@ filter:
         - 'vendor/*'
 build:
     environment:
-        hosts:
-          modx.local: '127.0.0.1'
-        apache2:
-          modules: ['rewrite']
-          sites:
-            modx:
-                web_root: 'web/'
-                host: 'modx.local'
-                rules:
-                  - 'RewriteEngine On'
-                  - 'RewriteBase /'
-                  - 'RewriteCond %{HTTP_USER_AGENT} ^.*internal\ dummy\ connection.*$ [NC]'
-                  - 'RewriteRule .* - [F,L]'
-                  - 'RewriteRule ^(manager|assets|js|css|images|img)/.*$ - [L]'
-                  - 'RewriteRule \.(jpg|jpeg|png|gif|ico)$ - [L]'
-                  - 'RewriteCond %{REQUEST_FILENAME} !-f'
-                  - 'RewriteCond %{REQUEST_FILENAME} !-d'
-                  - 'RewriteRule ^(.*)$ index.php?q=$1 [L,QSA]'
         php:
           version: 7.1
           ini:

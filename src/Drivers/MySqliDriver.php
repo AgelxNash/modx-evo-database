@@ -70,8 +70,6 @@ class MySqliDriver implements DriverInterface
             throw new Exceptions\ConnectException($exception->getMessage(), $exception->getCode());
         }
 
-        $this->setCharset($this->config['charset'], $this->config['method']);
-
         return $this->conn;
     }
 
@@ -311,5 +309,23 @@ class MySqliDriver implements DriverInterface
         }
 
         return $out;
+    }
+
+    /**
+     * @return string
+     * @throws Exceptions\Exception
+     */
+    public function getLastError() : string
+    {
+        return $this->getConnect()->error;
+    }
+
+    /**
+     * @return int
+     * @throws Exceptions\Exception
+     */
+    public function getLastErrorNo() : int
+    {
+        return $this->getConnect()->errno;
     }
 }

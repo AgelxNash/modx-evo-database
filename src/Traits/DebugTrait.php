@@ -45,7 +45,7 @@ trait DebugTrait
      */
     public function getLastError() : string
     {
-        return $this->getConnect()->error;
+        return $this->getDriver()->getLastError();
     }
 
     /**
@@ -54,7 +54,7 @@ trait DebugTrait
      */
     public function getLastErrorNo() : int
     {
-        return $this->getConnect()->errno;
+        return $this->getDriver()->getLastErrorNo();
     }
 
     /**

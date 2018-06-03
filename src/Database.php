@@ -54,7 +54,7 @@ class Database implements Interfaces\DatabaseInterface
         ));
 
         if (! \in_array(Interfaces\DriverInterface::class, class_implements($driver), true)) {
-            throw new Exceptions\Exception(
+            throw new Exceptions\DriverException(
                 $driver . ' should implements the ' . Interfaces\DriverInterface::class
             );
         }
@@ -85,15 +85,6 @@ class Database implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @return mixed
-     * @throws Exceptions\Exception
-     */
-    public function getConnect()
-    {
-        return $this->getDriver()->getConnect();
-    }
-
-    /**
      * @return Interfaces\DriverInterface
      * @throws Exceptions\Exception
      */
@@ -117,6 +108,8 @@ class Database implements Interfaces\DatabaseInterface
             $this->connectionTime = $totalTime;
         }
 
+        $this->setCharset($this->getConfig('charset'), $this->getConfig('method'));
+
         return $out;
     }
 
@@ -131,14 +124,6 @@ class Database implements Interfaces\DatabaseInterface
         $this->flushExecutedQuery();
 
         return $this;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isConnected() : bool
-    {
-        return $this->getDriver()->isConnected();
     }
 
     /**

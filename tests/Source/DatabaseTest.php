@@ -15,6 +15,19 @@ class DatabaseTest extends TestCase
         $this->instance = new Database\Database();
     }
 
+    public function testDriver()
+    {
+        try {
+            new Database\Database('', '', '', '', '', '', '', \stdClass::class);
+            $this->assertTrue(false, 'Need DriverException');
+        } catch (Database\Exceptions\DriverException $exception) {
+            $this->assertInstanceOf(
+                Database\Exceptions\DriverException::class,
+                $exception
+            );
+        }
+    }
+
     public function testConnection()
     {
         try {
@@ -26,11 +39,6 @@ class DatabaseTest extends TestCase
                 $exception
             );
         }
-    }
-
-    public function testNoConnection()
-    {
-        $this->assertFalse($this->instance->isConnected());
     }
 
     public function testIsResult()

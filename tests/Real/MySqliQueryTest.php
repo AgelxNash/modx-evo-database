@@ -46,25 +46,25 @@ class MySqliQuery extends TestCase
     {
         $this->assertInstanceOf(
             mysqli::class,
-            $this->instance->getConnect()
+            $this->instance->getDriver()->getConnect()
         );
     }
 
     public function testDisconnect()
     {
         $this->assertTrue(
-            $this->instance->isConnected()
+            $this->instance->getDriver()->isConnected()
         );
 
         $this->instance->disconnect();
 
         $this->assertFalse(
-            $this->instance->isConnected()
+            $this->instance->getDriver()->isConnected()
         );
 
-        $this->assertEquals(
+        $this->assertCount(
             0,
-            count($this->instance->getAllExecutedQuery())
+            $this->instance->getAllExecutedQuery()
         );
     }
 
@@ -85,7 +85,7 @@ class MySqliQuery extends TestCase
         );
 
         $querys = $this->instance->getAllExecutedQuery();
-        $this->assertEquals(2, count($querys));
+        $this->assertCount(2, $querys);
 
         $this->assertStringStartsWith(
             'OPTIMIZE TABLE',
@@ -274,13 +274,13 @@ class MySqliQuery extends TestCase
         $this->assertArrayHasKey('Default', $data['id']);
         $this->assertArrayHasKey('Extra', $data['id']);
 
-        $this->assertEquals(
-            count($data),
-            36 //count rows
+        $this->assertCount(
+            36, //count rows
+            $data
         );
 
         $querys = $this->instance->getAllExecutedQuery();
-        $this->assertEquals(1, count($querys));
+        $this->assertCount(1, $querys);
 
         $this->assertStringStartsWith(
             'SHOW FIELDS FROM',
@@ -510,7 +510,7 @@ class MySqliQuery extends TestCase
     {
         $query = 'SELECT 1';
 
-        $querys = count($this->instance->getAllExecutedQuery());
+        $querys = \count($this->instance->getAllExecutedQuery());
 
         $this->instance->query($query);
 
@@ -519,16 +519,16 @@ class MySqliQuery extends TestCase
             $this->instance->getLastQuery()
         );
 
-        $this->assertEquals(
+        $this->assertCount(
             ++$querys,
-            count($this->instance->getAllExecutedQuery())
+            $this->instance->getAllExecutedQuery()
         );
 
         $this->instance->flushExecutedQuery();
 
-        $this->assertEquals(
+        $this->assertCount(
             0,
-            count($this->instance->getAllExecutedQuery())
+            $this->instance->getAllExecutedQuery()
         );
 
         $this->assertEquals(

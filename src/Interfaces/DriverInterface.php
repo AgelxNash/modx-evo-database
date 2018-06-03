@@ -122,4 +122,14 @@ interface DriverInterface
      * @return mixed
      */
     public function getTableMetaData($result);
+
+    /**
+     * @return string
+     */
+    public function getLastError() : string;
+
+    /**
+     * @return int
+     */
+    public function getLastErrorNo() : int;
 }

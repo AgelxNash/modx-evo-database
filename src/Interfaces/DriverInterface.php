@@ -132,4 +132,11 @@ interface DriverInterface
      * @return int
      */
     public function getLastErrorNo() : int;
+
+    /**
+     * @param $result
+     * @param int $position
+     * @return bool
+     */
+    public function dataSeek($result, $position) : bool;
 }

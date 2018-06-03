@@ -328,4 +328,12 @@ class MySqliDriver implements DriverInterface
     {
         return $this->getConnect()->errno;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dataSeek($result, $position) : bool
+    {
+        return $result->data_seek($position);
+    }
 }

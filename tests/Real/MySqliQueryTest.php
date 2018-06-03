@@ -66,6 +66,11 @@ class MySqliQuery extends TestCase
             0,
             $this->instance->getAllExecutedQuery()
         );
+
+        $this->assertInstanceOf(
+            mysqli::class,
+            $this->instance->getDriver()->getConnect()
+        );
     }
 
     public function testVersion()
@@ -98,18 +103,41 @@ class MySqliQuery extends TestCase
         );
     }
 
+    public function testAlterTable()
+    {
+        $this->instance->flushExecutedQuery();
+
+        $this->assertTrue(
+            $this->instance->alterTable($this->table)
+        );
+
+        $querys = $this->instance->getAllExecutedQuery();
+        $this->assertCount(1, $querys);
+
+        $this->assertStringStartsWith(
+            'ALTER TABLE',
+            $querys[1]['sql']
+        );
+    }
+
     public function testHelperMethods()
     {
-        $result = $this->instance->query('SELECT id,pagetitle FROM ' . $this->table . ' ORDER BY id ASC LIMIT 3');
+        $query = 'SELECT id,pagetitle FROM ' . $this->table . ' ORDER BY id ASC LIMIT 3';
+        $result = $this->instance->query($query);
 
         $this->assertEquals(
             ['id', 'pagetitle'],
             $this->instance->getColumnNames($result)
         );
 
+        $out = $this->instance->getColumn('id', $result);
         $this->assertEquals(
             ['1', '2', '4'],
-            $out = $this->instance->getColumn('id', $result)
+            $out
+        );
+        $this->assertEquals(
+            $out,
+            $this->instance->getColumn('id', $query)
         );
 
         $this->assertEquals(
@@ -612,5 +640,55 @@ class MySqliQuery extends TestCase
         );
 
         $this->assertNotEmpty($data[$num]['path']);
+    }
+
+    public function testGetRow()
+    {
+        $query = 'SELECT `id`, `alias` FROM ' . $this->table . ' WHERE id = 1';
+
+        $result = $this->instance->query($query);
+        $this->assertInstanceOf(
+            mysqli_result::class,
+            $result
+        );
+
+        $data = $this->instance->getRow($query);
+
+        $this->assertEquals(
+            ['id' => 1, 'alias' => 'index'],
+            $data
+        );
+
+        $this->assertEquals(
+            $data,
+            $this->instance->getRow($result)
+        );
+
+        $this->assertTrue(
+            $this->instance->getDriver()->dataSeek($result, 0)
+        );
+
+        $this->assertEquals(
+            $data,
+            $this->instance->getRow($result, 'assoc')
+        );
+        $this->instance->getDriver()->dataSeek($result, 0);
+
+        $this->assertEquals(
+            [0 => 1, 1 => 'index'],
+            $this->instance->getRow($result, 'num')
+        );
+        $this->instance->getDriver()->dataSeek($result, 0);
+
+        $this->assertEquals(
+            (object)['id' => 1, 'alias' => 'index'],
+            $this->instance->getRow($result, 'object')
+        );
+        $this->instance->getDriver()->dataSeek($result, 0);
+
+        $this->assertEquals(
+            [0 => '1', 'id' => '1', 1 => 'index', 'alias' => 'index'],
+            $this->instance->getRow($result, 'both')
+        );
     }
 }

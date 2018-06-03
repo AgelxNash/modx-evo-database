@@ -412,6 +412,10 @@ class Database implements Interfaces\DatabaseInterface
      */
     public function getRow($result, $mode = 'assoc')
     {
+        if (\is_scalar($result)) {
+            $result = $this->query($result);
+        }
+
         return $this->getDriver()->getRow($result, $mode);
     }
 
@@ -514,10 +518,20 @@ class Database implements Interfaces\DatabaseInterface
     {
         $result = $this->query('OPTIMIZE TABLE ' . $table);
         if ($result !== false) {
-            $result = $this->query('ALTER TABLE ' . $table);
+            $result = $this->alterTable($table);
         }
 
         return $result;
+    }
+
+    /**
+     * @param string $table
+     * @return mixed
+     * @throws Exceptions\Exception
+     */
+    public function alterTable(string $table)
+    {
+        return $this->query('ALTER TABLE ' . $table);
     }
 
     /**

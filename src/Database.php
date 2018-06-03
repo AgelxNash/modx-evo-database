@@ -1,6 +1,5 @@
 <?php namespace AgelxNash\Modx\Evo\Database;
 
-use AgelxNash\Modx\Evo\Database\Exceptions\QueryException;
 use mysqli;
 use mysqli_result;
 use mysqli_sql_exception;
@@ -11,14 +10,13 @@ class Database implements DatabaseInterface
     use Traits\DebugTrait,
         Traits\SupportTrait;
 
-    protected const SAFE_LOOP_COUNT = 1000;
-
     /**
      * @var mysqli
      */
     public $conn;
     public $config = [];
 
+    protected $safeLoopCount = 1000;
 
     /**
      * @param string $host
@@ -161,7 +159,7 @@ class Database implements DatabaseInterface
     public function escape($data, $safeCount = 0)
     {
         $safeCount++;
-        if (self::SAFE_LOOP_COUNT < $safeCount) {
+        if ($this->safeLoopCount < $safeCount) {
             throw new Exceptions\TooManyLoopsException("Too many loops '{$safeCount}'");
         }
         if (\is_array($data)) {
@@ -191,16 +189,16 @@ class Database implements DatabaseInterface
         if (\is_array($sql)) {
             $sql = implode("\n", $sql);
         }
-        $this->lastQuery = $sql;
-
         try {
-            $result = $this->getConnect()->query($sql);
+            $this->lastQuery = $sql;
+            $result = $this->getConnect()->query($this->getLastQuery());
         } catch (mysqli_sql_exception $exception) {
-            throw new Exceptions\QueryException($exception->getMessage(), $exception->getCode());
+            throw (new Exceptions\QueryException($exception->getMessage(), $exception->getCode()))
+                ->setQuery($this->getLastQuery());
         }
 
         if ($result === false) {
-            $this->checkLastError($sql);
+            $this->checkLastError($this->getLastQuery());
         } else {
             $tend = microtime(true);
             $totalTime = $tend - $tStart;
@@ -208,7 +206,7 @@ class Database implements DatabaseInterface
             if ($this->isDebug()) {
                 $this->collectQuery(
                     $result,
-                    $sql,
+                    $this->getLastQuery(),
                     $this->executedQueries + 1,
                     $totalTime
                 );
@@ -229,6 +227,7 @@ class Database implements DatabaseInterface
      * @throws Exceptions\ConnectException
      * @throws Exceptions\QueryException
      * @throws Exceptions\TableNotDefinedException
+     * @throws Exceptions\InvalidFieldException
      */
     public function delete($table, $where = '', $orderBy = '', $limit = '')
     {
@@ -250,6 +249,7 @@ class Database implements DatabaseInterface
      * @throws Exceptions\ConnectException
      * @throws Exceptions\QueryException
      * @throws Exceptions\TableNotDefinedException
+     * @throws Exceptions\InvalidFieldException
      */
     public function select($fields, $tables, $where = '', $orderBy = '', $limit = '')
     {
@@ -270,21 +270,25 @@ class Database implements DatabaseInterface
      * @throws Exceptions\ConnectException
      * @throws Exceptions\QueryException
      * @throws Exceptions\TableNotDefinedException
+     * @throws Exceptions\InvalidFieldException
      */
     public function update($values, string $table, $where = '')
     {
         $table = $this->prepareFrom($table);
         $values = $this->prepareValuesSet($values);
+        if (mb_strtoupper(mb_substr($values, 0, 4)) !== 'SET ') {
+            $values = 'SET ' . $values;
+        }
         $where = $this->prepareWhere($where);
 
-        return $this->query("UPDATE {$table} SET {$values} {$where}");
+        return $this->query("UPDATE {$table} {$values} {$where}");
     }
 
     /**
      * @param array|string $fields
      * @param string $table
-     * @param string $fromfields
-     * @param string $fromtable
+     * @param array|string $fromFields
+     * @param string $fromTable
      * @param array|string $where
      * @param string $limit
      * @return mixed
@@ -293,56 +297,78 @@ class Database implements DatabaseInterface
      * @throws Exceptions\QueryException
      * @throws Exceptions\TableNotDefinedException
      * @throws Exceptions\TooManyLoopsException
+     * @throws Exceptions\InvalidFieldException
      */
     public function insert(
         $fields,
         string $table,
-        string $fromfields = '*',
-        string $fromtable = '',
+        $fromFields = '*',
+        string $fromTable = '',
         $where = '',
         string $limit = ''
     ) {
         $table = $this->prepareFrom($table);
 
-        if (is_scalar($fields)) {
-            $this->query("INSERT INTO {$table} {$fields}");
+        $useFields = null;
+        $lid = null;
+
+        if (\is_array($fields)) {
+            $useFields = empty($fromTable) ?
+                $this->prepareValues($fields) :
+                $this->prepareFields($fields, true);
         } else {
-            if (empty($fromtable) && \is_array($fields)) {
-                $fields = $this->prepareValues($fields);
-                $this->query("INSERT INTO {$table} {$fields}");
-            } else {
-                $fields = $this->prepareValues($fields, 2, true)['values'];
-                $where = $this->prepareWhere($where);
-                $limit = $this->prepareLimit($limit);
-                $this->query("INSERT INTO {$table} {$fields} SELECT {$fromfields} FROM {$fromtable} {$where} {$limit}");
-            }
+            $useFields = $fields;
         }
-        if (($lid = $this->getInsertId()) === false) {
+
+        if (empty($useFields) || ! \is_scalar($useFields) || ($useFields === '*' && ! empty($fromTable))) {
+            throw (new Exceptions\InvalidFieldException('Invalid insert fields'))
+                ->setData($fields);
+        }
+
+        if (empty($fromTable)) {
+            $this->query("INSERT INTO {$table} {$useFields}");
+        } else {
+            if (empty($fromFields) || $fromFields === '*') {
+                $fromFields = $this->prepareFields($fields, true);
+            } else {
+                $fromFields = $this->prepareFields($fromFields, true);
+            }
+
+            $where = $this->prepareWhere($where);
+            $limit = $this->prepareLimit($limit);
+
+            $lid = $this->query(
+                "INSERT INTO {$table} ({$useFields}) SELECT {$fromFields} FROM {$fromTable} {$where} {$limit}"
+            );
+        }
+
+        if ($lid === null && ($lid = $this->getInsertId()) === false) {
             throw new Exceptions\GetDataException("Couldn't get last insert key!");
         }
 
-        return $lid;
+        return $this->convertValue($lid);
     }
 
     /**
      * @param string|array $fields
      * @param string $table
-     * @param string $where
+     * @param array|string $where
      * @return bool|mixed|mysqli_result
      * @throws Exceptions\ConnectException
      * @throws Exceptions\GetDataException
      * @throws Exceptions\QueryException
      * @throws Exceptions\TableNotDefinedException
      * @throws Exceptions\TooManyLoopsException
+     * @throws Exceptions\InvalidFieldException
      */
-    public function save($fields, string $table, string $where = '')
+    public function save($fields, string $table, $where = '')
     {
         if ($where === '') {
             $mode = 'insert';
         } else {
             $result = $this->select('*', $table, $where);
             if (! $result instanceof mysqli_result) {
-                throw (new QueryException('Need mysqli_result'))
+                throw (new Exceptions\QueryException('Need mysqli_result'))
                     ->setQuery($this->getLastQuery());
             }
             if ($this->getRecordCount($result) === 0) {
@@ -362,17 +388,6 @@ class Database implements DatabaseInterface
     public function isResult($result) : bool
     {
         return $result instanceof mysqli_result;
-    }
-
-    /**
-     * @param mysqli_result $result
-     * @return $this
-     */
-    public function freeResult(mysqli_result $result) : self
-    {
-        $result->free_result();
-
-        return $this;
     }
 
     /**
@@ -401,7 +416,7 @@ class Database implements DatabaseInterface
      * @param string|null $method
      * @return bool
      * @throws Exceptions\ConnectException
-     * @throws QueryException
+     * @throws Exceptions\QueryException
      */
     public function setCharset(string $charset, $method = null) : bool
     {
@@ -544,7 +559,7 @@ class Database implements DatabaseInterface
             $out = $result[0] ?? false;
         }
 
-        return $out;
+        return $this->convertValue($out);
     }
 
     /**
@@ -591,16 +606,6 @@ class Database implements DatabaseInterface
     }
 
     /**
-     * @param mysqli_result $result
-     * @param int $row
-     * @return bool
-     */
-    public function dataSeek(mysqli_result $result, int $row) : bool
-    {
-        return $result->data_seek($row);
-    }
-
-    /**
      * @return string
      * @throws Exceptions\ConnectException
      * @throws Exceptions\QueryException
@@ -644,7 +649,9 @@ class Database implements DatabaseInterface
      */
     public function getInsertId()
     {
-        return $this->getConnect()->insert_id;
+        return $this->convertValue(
+            $this->getConnect()->insert_id
+        );
     }
 
     /**

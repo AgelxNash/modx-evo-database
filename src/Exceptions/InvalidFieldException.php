@@ -2,7 +2,7 @@
 
 use Exception;
 
-class InvaludFieldException extends Exception
+class InvalidFieldException extends Exception
 {
     protected $data;
 

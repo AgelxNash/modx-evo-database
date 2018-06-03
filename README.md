@@ -1,5 +1,5 @@
 ## DBAPI Evolution
-[![CMS MODX Evolution](https://img.shields.io/badge/CMS-MODX%20Evolution-brightgreen.svg)](https://github.com/modxcms/evolution) [![Build Status](https://api.travis-ci.org/AgelxNash/modx-evo-database.svg?branch=master)](https://travis-ci.org/AgelxNash/modx-evo-database) [![Code quality](https://img.shields.io/scrutinizer/g/AgelxNash/modx-evo-database.svg?maxAge=2592000)](https://scrutinizer-ci.com/g/AgelxNash/modx-evo-database/) [![Code Coverage](https://scrutinizer-ci.com/g/AgelxNash/modx-evo-database/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/AgelxNash/modx-evo-database/?branch=master) [![Total Downloads](https://poser.pugx.org/agelxnash/modx-evo-database/d/total.png)](https://packagist.org/packages/agelxnash/modx-evo-database) [![License](https://img.shields.io/github/license/AgelxNash/modx-evo-database.svg?maxAge=2592000)](https://github.com/AgelxNash/modx-evo-database/blob/master/LICENSE)
+[![CMS MODX Evolution](https://img.shields.io/badge/CMS-MODX%20Evolution-brightgreen.svg)](https://github.com/modxcms/evolution) [![Build Status](https://api.travis-ci.org/AgelxNash/modx-evo-database.svg?branch=master)](https://travis-ci.org/AgelxNash/modx-evo-database) [![Code quality](https://img.shields.io/scrutinizer/g/AgelxNash/modx-evo-database.svg?maxAge=2592000)](https://scrutinizer-ci.com/g/AgelxNash/modx-evo-database/) [![Code Coverage](https://scrutinizer-ci.com/g/AgelxNash/modx-evo-database/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/AgelxNash/modx-evo-database/?branch=master) [![Total Downloads](https://poser.pugx.org/agelxnash/modx-evo-database/d/total.png)](https://packagist.org/packages/agelxnash/modx-evo-database) [![License](https://gitlicense.com/badge/AgelxNash/modx-evo-database)](https://github.com/AgelxNash/modx-evo-database/blob/master/LICENSE.md)
 
 ### Example
 ---------
@@ -46,6 +46,7 @@ foreach ($DB->makeArray($result) as $item) {
 	    Laravel, MODX, Security Audit
 		<br />
 		<bt />
+		<br />
 		<br />
         <small>
             <a href="https://agel-nash.ru">https://agel-nash.ru</a>

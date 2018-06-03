@@ -2,6 +2,7 @@
 
 use PHPUnit\Framework\TestCase;
 use AgelxNash\Modx\Evo\Database;
+use ReflectionMethod;
 
 class SupportTraitTest extends TestCase
 {
@@ -12,26 +13,64 @@ class SupportTraitTest extends TestCase
         $this->instance = new Database\Database();
     }
 
+    public function testGetTableName()
+    {
+        $this->assertSame(
+            '`site_content`',
+            (new Database\Database('agel-nash.ru', 'modx'))
+                ->getTableName('site_content'),
+            'STEP 1/4'
+        );
+
+        $this->assertSame(
+            '`modx_site_content`',
+            (new Database\Database('agel-nash.ru', 'modx', 'agel_nash', '', 'modx_'))
+                ->getTableName('site_content'),
+            'STEP 2/4'
+        );
+
+        $this->assertSame(
+            'modx_site_content',
+            (new Database\Database('agel-nash.ru', 'modx', 'agel_nash', '', 'modx_'))
+                ->getTableName('site_content', false),
+            'STEP 3/4'
+        );
+
+        try {
+            $this->instance->getTableName('');
+            $this->assertTrue(false, 'Need TableNotDefinedException');
+        } catch (Database\Exceptions\TableNotDefinedException $exception) {
+            $this->assertTrue(true);
+        }
+    }
+
     public function testGetFullTableName()
     {
         $this->assertSame(
             '`modx`.`site_content`',
             (new Database\Database('agel-nash.ru', 'modx'))
                 ->getFullTableName('site_content'),
-            'STEP 1/2'
+            'STEP 1/3'
         );
 
         $this->assertSame(
             '`modx`.`modx_site_content`',
             (new Database\Database('agel-nash.ru', 'modx', 'agel_nash', '', 'modx_'))
                 ->getFullTableName('site_content'),
-            'STEP 2/2'
+            'STEP 2/3'
         );
+
+        try {
+            $this->instance->getFullTableName('');
+            $this->assertTrue(false, 'Need TableNotDefinedException');
+        } catch (Database\Exceptions\TableNotDefinedException $exception) {
+            $this->assertTrue(true);
+        }
     }
 
     public function testFunctionPrepareWhere()
     {
-        $method = new \ReflectionMethod($this->instance, 'prepareWhere');
+        $method = new ReflectionMethod($this->instance, 'prepareWhere');
         $method->setAccessible(true);
 
         $this->assertSame(
@@ -51,11 +90,22 @@ class SupportTraitTest extends TestCase
             $method->invoke($this->instance, ['id = 1', 'AND', 'title=test']),
             'STEP 2/3'
         );
+
+        try {
+            $data = ['id' => 10, 'title' => 'test'];
+            $method->invoke($this->instance, $data);
+            $this->assertTrue(false, 'Need InvalidFieldException');
+        } catch (Database\Exceptions\InvalidFieldException $exception) {
+            $this->assertEquals(
+                $data,
+                $exception->getData()
+            );
+        }
     }
 
     public function testFunctionPrepareFrom()
     {
-        $method = new \ReflectionMethod($this->instance, 'prepareFrom');
+        $method = new ReflectionMethod($this->instance, 'prepareFrom');
         $method->setAccessible(true);
 
         $this->assertSame(
@@ -76,7 +126,7 @@ class SupportTraitTest extends TestCase
 
     public function testFunctionPrepareOrder()
     {
-        $method = new \ReflectionMethod($this->instance, 'prepareOrder');
+        $method = new ReflectionMethod($this->instance, 'prepareOrder');
         $method->setAccessible(true);
 
         $this->assertSame(
@@ -94,7 +144,7 @@ class SupportTraitTest extends TestCase
 
     public function testFunctionPrepareLimit()
     {
-        $method = new \ReflectionMethod($this->instance, 'prepareLimit');
+        $method = new ReflectionMethod($this->instance, 'prepareLimit');
         $method->setAccessible(true);
 
         $this->assertSame(
@@ -118,31 +168,41 @@ class SupportTraitTest extends TestCase
 
     public function testFunctionPrepareNull()
     {
-        $method = new \ReflectionMethod($this->instance, 'prepareNull');
+        $method = new ReflectionMethod($this->instance, 'prepareNull');
         $method->setAccessible(true);
 
         $this->assertSame(
             "'text'",
             $method->invoke($this->instance, 'text'),
-            'STEP 1/3'
+            'STEP 1/4'
         );
 
         $this->assertSame(
             'NULL',
             $method->invoke($this->instance, 'null'),
-            'STEP 2/3'
+            'STEP 2/4'
         );
 
         $this->assertSame(
             'NULL',
             $method->invoke($this->instance, null),
-            'STEP 3/3'
+            'STEP 3/4'
         );
+
+        try {
+            $method->invoke($this->instance, []);
+            $this->assertTrue(false, 'Need ConnectException');
+        } catch (Database\Exceptions\InvalidFieldException $exception) {
+            $this->assertEquals(
+                [],
+                $exception->getData()
+            );
+        }
     }
 
     public function testFunctionPrepareValues()
     {
-        $method = new \ReflectionMethod($this->instance, 'prepareValues');
+        $method = new ReflectionMethod($this->instance, 'prepareValues');
         $method->setAccessible(true);
 
         $this->assertSame(
@@ -196,7 +256,7 @@ class SupportTraitTest extends TestCase
 
     public function testFunctionPrepareValuesSet()
     {
-        $method = new \ReflectionMethod($this->instance, 'prepareValuesSet');
+        $method = new ReflectionMethod($this->instance, 'prepareValuesSet');
         $method->setAccessible(true);
 
         $this->assertSame(
@@ -213,5 +273,37 @@ class SupportTraitTest extends TestCase
             ),
             'STEP 2/2'
         );
+    }
+
+    public function testConvertValue()
+    {
+        $method = new ReflectionMethod($this->instance, 'convertValue');
+        $method->setAccessible(true);
+
+        $checkValues = [
+            'int' => [
+                10, '10', -10, '-10'
+            ],
+            'float' => [
+                10.10, '10.10', -10.10, '-10.10'
+            ],
+            'bool' => [
+                true, false
+            ],
+            'string' => [
+                '10a', 'a10', '-10a', '-a10', 'true', 'false', 'null'
+            ]
+        ];
+
+        $step = 0;
+        foreach ($checkValues as $type => $data) {
+            foreach ($data as $item) {
+                $this->assertThat(
+                    $method->invoke($this->instance, $item),
+                    $this->isType($type),
+                    '[ STEP ' . ++$step . '] Check ' . $item . ' as ' . $type
+                );
+            }
+        }
     }
 }

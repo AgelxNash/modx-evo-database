@@ -15,6 +15,19 @@ class DatabaseTest extends TestCase
         $this->instance = new Database\Database();
     }
 
+    public function testConnection()
+    {
+        try {
+            $this->instance->connect();
+            $this->assertTrue(false, 'Need ConnectException');
+        } catch (Database\Exceptions\ConnectException $exception) {
+            $this->assertInstanceOf(
+                Database\Exceptions\ConnectException::class,
+                $exception
+            );
+        }
+    }
+
     public function testNoConnection()
     {
         $this->assertFalse($this->instance->isConnected());

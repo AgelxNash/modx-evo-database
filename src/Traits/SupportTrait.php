@@ -12,10 +12,27 @@ trait SupportTrait
 
     /**
      * @param string $table
+     * @param bool $escape
      * @return string
      * @throws Exceptions\TableNotDefinedException
      */
-    public function getFullTableName(string $table) : string
+    public function getTableName(string $table, bool $escape = true): string
+    {
+        if (empty($table)) {
+            throw new Exceptions\TableNotDefinedException($table);
+        }
+
+        $out = $this->getConfig('prefix') . $table;
+
+        return $escape ? '`' . $out . '`' : $out;
+    }
+
+    /**
+     * @param string $table
+     * @return string
+     * @throws Exceptions\TableNotDefinedException
+     */
+    public function getFullTableName(string $table): string
     {
         if (empty($table)) {
             throw new Exceptions\TableNotDefinedException($table);
@@ -23,8 +40,28 @@ trait SupportTrait
 
         return implode('.', [
             '`' . $this->getConfig('base') . '`',
-            '`' . $this->getConfig('prefix') . $table . '`'
+            $this->getTableName($table)
         ]);
+    }
+
+    /**
+     * @param $value
+     * @return mixed
+     */
+    protected function convertValue($value)
+    {
+        switch (true) {
+            case (\is_numeric($value) && ! \is_float(1 * $value)):
+                $value = (int)$value;
+                break;
+            case \is_numeric($value) && \is_float(1*$value):
+                $value = (float)$value;
+                break;
+            default:
+                break;
+        }
+
+        return $value;
     }
 
     /**
@@ -33,7 +70,7 @@ trait SupportTrait
      * @return bool|false|string
      * @deprecated
      */
-    public function prepareDate(int $timestamp, string $fieldType = 'DATETIME')
+    public function convertDate(int $timestamp, string $fieldType = 'DATETIME')
     {
         $date = false;
         if (! empty($timestamp) && $timestamp > 0) {
@@ -59,14 +96,16 @@ trait SupportTrait
 
     /**
      * @param string|array $data
+     * @param bool $ignoreAlias
      * @return string
      */
-    protected function prepareFields($data) : string
+    protected function prepareFields($data, $ignoreAlias = false): string
     {
         if (\is_array($data)) {
             $tmp = [];
             foreach ($data as $alias => $field) {
-                $tmp[] = ($alias !== $field && ! \is_int($alias)) ? ($field . ' as `' . $alias . '`') : $field;
+                $tmp[] = ($alias !== $field && ! \is_int($alias) && $ignoreAlias === false) ?
+                    ($field . ' as `' . $alias . '`') : $field;
             }
 
             $data = implode(',', $tmp);
@@ -81,8 +120,9 @@ trait SupportTrait
     /**
      * @param string|null $value
      * @return string
+     * @throws Exceptions\InvalidFieldException
      */
-    protected function prepareNull($value) : string
+    protected function prepareNull($value): string
     {
         switch (true) {
             case ($value === null || (\is_scalar($value) && strtolower($value) === 'null')):
@@ -92,7 +132,7 @@ trait SupportTrait
                 $value = "'" . $value . "'";
                 break;
             default:
-                throw (new Exceptions\InvaludFieldException('NULL'))
+                throw (new Exceptions\InvalidFieldException('NULL'))
                     ->setData($value);
         }
 
@@ -105,8 +145,9 @@ trait SupportTrait
      * @param bool $skipFieldNames
      * @return array|string
      * @throws Exceptions\TooManyLoopsException
+     * @throws Exceptions\InvalidFieldException
      */
-    public function prepareValues($data, $level = 1, $skipFieldNames = false)
+    protected function prepareValues($data, $level = 1, $skipFieldNames = false)
     {
         $fields = [];
         $values = [];
@@ -117,14 +158,14 @@ trait SupportTrait
             foreach ($data as $key => $value) {
                 if (\is_array($value)) {
                     if ($level > 2) {
-                        throw new Exceptions\TooManyLoopsException();
+                        throw new Exceptions\TooManyLoopsException('Values');
                     }
                     $maxLevel++;
                     $out = $this->prepareValues($value, $level + 1);
                     if (empty($fields)) {
                         $fields = $out['fields'];
                     } elseif ($fields !== $out['fields'] && $skipFieldNames === false) {
-                        throw (new Exceptions\InvaludFieldException("Don't match field names"))
+                        throw (new Exceptions\InvalidFieldException("Don't match field names"))
                             ->setData($data);
                     }
                     $wrap = true;
@@ -143,12 +184,12 @@ trait SupportTrait
         }
 
         if (! \is_scalar($values)) {
-            throw (new Exceptions\InvaludFieldException('values'))
+            throw (new Exceptions\InvalidFieldException('values'))
                 ->setData($values);
         }
 
         if (($fields = $this->checkFields($fields, $maxLevel, $skipFieldNames)) === false) {
-            throw (new Exceptions\InvaludFieldException('fields name'))
+            throw (new Exceptions\InvalidFieldException('fields name'))
                 ->setData($data);
         }
 
@@ -165,18 +206,10 @@ trait SupportTrait
      * @param bool $skipFieldNames
      * @return bool|string
      */
-    private function checkFields($fields, $level, bool $skipFieldNames = false)
+    protected function checkFields($fields, $level = 1, bool $skipFieldNames = false)
     {
         if (\is_array($fields) && $skipFieldNames === false) {
-            $onlyNumbers = true;
-            foreach ($fields as $name) {
-                if (! \is_int($name)) {
-                    $onlyNumbers = false;
-                    break;
-                }
-            }
-
-            if ($onlyNumbers === true) {
+            if ($this->arrayOnlyNumeric($fields) === true) {
                 $fields = ($level === 2) ? false : '';
             } else {
                 $fields = '(`' . implode('`, `', $fields) . '`)';
@@ -187,10 +220,28 @@ trait SupportTrait
     }
 
     /**
+     * @param array $data
+     * @return bool
+     */
+    protected function arrayOnlyNumeric(array $data) : bool
+    {
+        $onlyNumbers = true;
+        foreach ($data as $value) {
+            if (! \is_numeric($value)) {
+                $onlyNumbers = false;
+                break;
+            }
+        }
+
+        return $onlyNumbers;
+    }
+
+    /**
      * @param string|array $data
      * @return string
+     * @throws Exceptions\InvalidFieldException
      */
-    protected function prepareValuesSet($data) : string
+    protected function prepareValuesSet($data): string
     {
         if (\is_array($data)) {
             foreach ($data as $key => $value) {
@@ -203,7 +254,7 @@ trait SupportTrait
             $data = implode(', ', $data);
         }
 
-        return $data;
+        return trim($data);
     }
 
     /**
@@ -212,7 +263,7 @@ trait SupportTrait
      * @return string
      * @throws Exceptions\TableNotDefinedException
      */
-    protected function prepareFrom($data, bool $hasArray = false) : string
+    protected function prepareFrom($data, bool $hasArray = false): string
     {
         if (\is_array($data) && $hasArray === true) {
             $tmp = [];
@@ -231,11 +282,17 @@ trait SupportTrait
     /**
      * @param array|string $data
      * @return string
+     * @throws Exceptions\InvalidFieldException
      */
-    protected function prepareWhere($data) : string
+    protected function prepareWhere($data): string
     {
         if (\is_array($data)) {
-            $data = implode(' ', $data);
+            if ($this->arrayOnlyNumeric(array_keys($data)) === true) {
+                $data = implode(' ', $data);
+            } else {
+                throw (new Exceptions\InvalidFieldException('WHERE'))
+                    ->setData($data);
+            }
         }
         $data = trim($data);
         if (! empty($data) && stripos($data, 'WHERE') !== 0) {
@@ -249,7 +306,7 @@ trait SupportTrait
      * @param string $data
      * @return string
      */
-    protected function prepareOrder($data) : string
+    protected function prepareOrder($data): string
     {
         $data = trim($data);
         if (! empty($data) && stripos($data, 'ORDER') !== 0) {
@@ -263,7 +320,7 @@ trait SupportTrait
      * @param string $data
      * @return string
      */
-    protected function prepareLimit($data) : string
+    protected function prepareLimit($data): string
     {
         $data = trim($data);
         if (! empty($data) && stripos($data, 'LIMIT') !== 0) {

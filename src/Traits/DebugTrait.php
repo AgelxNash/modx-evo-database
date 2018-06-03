@@ -13,6 +13,14 @@ trait DebugTrait
     protected $lastQuery = '';
     protected $connectionTime = 0;
 
+    public $ignoreErrors = [
+        1054, // SQLSTATE: 42S22 (ER_BAD_FIELD_ERROR) Unknown column '%s' in '%s'
+        1060, // SQLSTATE: 42S21 (ER_DUP_FIELDNAME) Duplicate column name '%s'
+        1061, // SQLSTATE: 42000 (ER_DUP_KEYNAME) Duplicate key name '%s'
+        1062, // SQLSTATE: 23000 (ER_DUP_ENTRY) Duplicate entry '%s' for key %d
+        1091 // SQLSTATE: 42000 (ER_CANT_DROP_FIELD_OR_KEY) Can't DROP '%s'; check that column/key exists
+    ];
+
     protected $timeFormat = '%2.5f';
 
     /**
@@ -56,23 +64,63 @@ trait DebugTrait
     }
 
     /**
+     * @return array
+     */
+    public function getIgnoreErrors() : array
+    {
+        return $this->ignoreErrors;
+    }
+
+    /**
+     * @param int $error
+     * @return DebugTrait
+     */
+    public function addIgnoreErrors(int $error) : self
+    {
+        $this->ignoreErrors[] = $error;
+
+        return $this;
+    }
+
+    /**
+     * @return DebugTrait
+     */
+    public function flushIgnoreErrors() : self
+    {
+        $this->ignoreErrors = [];
+
+        return $this;
+    }
+
+    /**
+     * @param array $errors
+     * @return DebugTrait
+     */
+    public function setIgnoreErrors(array $errors = []) : self
+    {
+        $this->flushIgnoreErrors();
+
+        foreach ($errors as $error) {
+            $this->addIgnoreErrors($error);
+        }
+
+        return $this;
+    }
+
+    /**
      * @param null|string $query
+     * @return bool
      * @throws Exceptions\ConnectException
      * @throws Exceptions\QueryException
      */
-    public function checkLastError($query = null) : void
+    public function checkLastError($query = null) : bool
     {
-        switch ($this->getLastErrorNo()) {
-            case 1054:
-            case 1060:
-            case 1061:
-            case 1062:
-            case 1091:
-                break;
-            default:
-                throw (new Exceptions\QueryException($this->getLastError()))
-                    ->setQuery($query);
+        if ($this->getIgnoreErrors() === [] || \in_array($this->getLastErrorNo(), $this->getIgnoreErrors(), true)) {
+            return false;
         }
+
+        throw (new Exceptions\QueryException($this->getLastError()))
+            ->setQuery($query);
     }
 
     /**
@@ -100,8 +148,9 @@ trait DebugTrait
 
         $this->queryCollection[$iteration] = [
             'sql' => $sql,
-            'time' => sprintf($this->timeFormat, $time),
-            'rows' => (stripos($sql, 'SELECT') === 0) ? $this->getRecordCount($result) : $this->getAffectedRows(),
+            'time' => $time,
+            'rows' => (stripos($sql, 'SELECT') === 0 && $result instanceof mysqli_result) ?
+                $this->getRecordCount($result) : $this->getAffectedRows(),
             'path' => $path,
             //'event' => $modx->event->name,
             //'element' => [
@@ -149,7 +198,7 @@ trait DebugTrait
 
         foreach ($this->getAllExecutedQuery() as $i => $query) {
             $out .= '<fieldset style="text-align:left">';
-            $out .= '<legend>Query ' . $i . ' - ' . $query['time'] . '</legend>';
+            $out .= '<legend>Query ' . $i . ' - ' . sprintf($this->timeFormat, $query['time']) . '</legend>';
             $out .= $query['sql'] . '<br><br>';
             if (! empty($query['element'])) {
                 $out .= $query['element']['type'] . '  => ' . $query['element']['name'] . '<br>';
@@ -171,7 +220,7 @@ trait DebugTrait
 
     /**
      * @param bool $format
-     * @return string|int
+     * @return string|float
      */
     public function getConnectionTime(bool $format = false)
     {

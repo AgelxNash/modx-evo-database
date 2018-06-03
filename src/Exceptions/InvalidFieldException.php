@@ -1,7 +1,5 @@
 <?php namespace AgelxNash\Modx\Evo\Database\Exceptions;
 
-use Exception;
-
 class InvalidFieldException extends Exception
 {
     protected $data;

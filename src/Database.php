@@ -1,21 +1,23 @@
 <?php namespace AgelxNash\Modx\Evo\Database;
 
-use mysqli;
-use mysqli_result;
-use mysqli_sql_exception;
-use mysqli_driver;
-
-class Database implements DatabaseInterface
+class Database implements Interfaces\DatabaseInterface
 {
     use Traits\DebugTrait,
         Traits\SupportTrait;
 
     /**
-     * @var mysqli
+     * @var array
      */
-    public $conn;
-    public $config = [];
+    protected $config = [];
 
+    /**
+     * @var Drivers\MySqliDriver
+     */
+    protected $driver;
+
+    /**
+     * @var int
+     */
     protected $safeLoopCount = 1000;
 
     /**
@@ -26,6 +28,8 @@ class Database implements DatabaseInterface
      * @param string $prefix
      * @param string $charset
      * @param string $method
+     * @param string $driver
+     * @throws Exceptions\Exception
      */
     public function __construct(
         $host = '',
@@ -34,12 +38,10 @@ class Database implements DatabaseInterface
         $pass = '',
         $prefix = '',
         $charset = 'utf8mb4',
-        $method = 'SET CHARACTER SET'
+        $method = 'SET CHARACTER SET',
+        $driver = Drivers\MySqliDriver::class
     ) {
         $base = trim($base, '`');
-
-        $driver = new mysqli_driver();
-        $driver->report_mode = MYSQLI_REPORT_STRICT | MYSQLI_REPORT_ERROR;
 
         $this->setConfig(compact(
             'host',
@@ -50,6 +52,16 @@ class Database implements DatabaseInterface
             'charset',
             'method'
         ));
+
+        if (! \in_array(Interfaces\DriverInterface::class, class_implements($driver), true)) {
+            throw new Exceptions\Exception(
+                $driver . ' should implements the ' . Interfaces\DriverInterface::class
+            );
+        }
+
+        $this->driver = new $driver(
+            $this->getConfig()
+        );
     }
 
     /**
@@ -73,56 +85,39 @@ class Database implements DatabaseInterface
     }
 
     /**
-     * @return mysqli
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @return mixed
+     * @throws Exceptions\Exception
      */
-    public function getConnect() : mysqli
+    public function getConnect()
     {
-        if (! $this->isConnected()) {
-            return $this->connect();
-        }
-
-        return $this->conn;
+        return $this->getDriver()->getConnect();
     }
 
     /**
-     * @return mysqli
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @return Interfaces\DriverInterface
+     * @throws Exceptions\Exception
      */
-    public function connect() : mysqli
+    public function getDriver() : Interfaces\DriverInterface
+    {
+        return $this->driver;
+    }
+
+    /**
+     * @return mixed
+     * @throws Exceptions\Exception
+     */
+    public function connect()
     {
         $tStart = microtime(true);
-        try {
-            $this->conn = new mysqli(
-                $this->getConfig('host'),
-                $this->getConfig('user'),
-                $this->getConfig('pass'),
-                $this->getConfig('base')
-            );
 
-            if ($this->isConnected() && $this->getConnect()->connect_error) {
-                throw new Exceptions\ConnectException($this->conn->connect_error);
-            }
-
-            if (! $this->isConnected()) {
-                throw new Exceptions\ConnectException(
-                    $this->getLastError() ?: 'Failed to create the database connection!'
-                );
-            }
-        } catch (mysqli_sql_exception $exception) {
-            throw new Exceptions\ConnectException($exception->getMessage(), $exception->getCode());
-        }
-
-        $this->setCharset($this->getConfig('charset'), $this->getConfig('method'));
+        $out = $this->getDriver()->connect();
 
         $totalTime = microtime(true) - $tStart;
         if ($this->isDebug()) {
             $this->connectionTime = $totalTime;
         }
 
-        return $this->conn;
+        return $out;
     }
 
     /**
@@ -130,10 +125,8 @@ class Database implements DatabaseInterface
      */
     public function disconnect() : self
     {
-        if ($this->isConnected()) {
-            $this->conn->close();
-        }
-        $this->conn = null;
+        $this->getDriver()->disconnect();
+
         $this->connectionTime = 0;
         $this->flushExecutedQuery();
 
@@ -145,16 +138,14 @@ class Database implements DatabaseInterface
      */
     public function isConnected() : bool
     {
-        return ($this->conn instanceof mysqli);
+        return $this->getDriver()->isConnected();
     }
 
     /**
      * @param string|array $data
      * @param int $safeCount
      * @return array|string
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
-     * @throws Exceptions\TooManyLoopsException
+     * @throws Exceptions\Exception
      */
     public function escape($data, $safeCount = 0)
     {
@@ -171,7 +162,7 @@ class Database implements DatabaseInterface
                 }
             }
         } else {
-            $data = $this->getConnect()->escape_string($data);
+            $data = $this->getDriver()->escape($data);
         }
 
         return $data;
@@ -179,9 +170,8 @@ class Database implements DatabaseInterface
 
     /**
      * @param mixed $sql
-     * @return bool|mysqli_result
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @return mixed
+     * @throws Exceptions\Exception
      */
     public function query($sql)
     {
@@ -189,13 +179,9 @@ class Database implements DatabaseInterface
         if (\is_array($sql)) {
             $sql = implode("\n", $sql);
         }
-        try {
-            $this->lastQuery = $sql;
-            $result = $this->getConnect()->query($this->getLastQuery());
-        } catch (mysqli_sql_exception $exception) {
-            throw (new Exceptions\QueryException($exception->getMessage(), $exception->getCode()))
-                ->setQuery($this->getLastQuery());
-        }
+        $this->lastQuery = $sql;
+
+        $result = $this->getDriver()->query($this->getLastQuery());
 
         if ($result === false) {
             $this->checkLastError($this->getLastQuery());
@@ -223,11 +209,8 @@ class Database implements DatabaseInterface
      * @param array|string $where
      * @param string $orderBy
      * @param string $limit
-     * @return bool|mysqli_result
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
-     * @throws Exceptions\TableNotDefinedException
-     * @throws Exceptions\InvalidFieldException
+     * @return mixed
+     * @throws Exceptions\Exception
      */
     public function delete($table, $where = '', $orderBy = '', $limit = '')
     {
@@ -245,11 +228,8 @@ class Database implements DatabaseInterface
      * @param array|string $where
      * @param string $orderBy
      * @param string $limit
-     * @return bool|mysqli_result
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
-     * @throws Exceptions\TableNotDefinedException
-     * @throws Exceptions\InvalidFieldException
+     * @return mixed
+     * @throws Exceptions\Exception
      */
     public function select($fields, $tables, $where = '', $orderBy = '', $limit = '')
     {
@@ -266,11 +246,8 @@ class Database implements DatabaseInterface
      * @param array|string $values
      * @param string $table
      * @param array|string $where
-     * @return bool|mysqli_result
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
-     * @throws Exceptions\TableNotDefinedException
-     * @throws Exceptions\InvalidFieldException
+     * @return mixed
+     * @throws Exceptions\Exception
      */
     public function update($values, string $table, $where = '')
     {
@@ -292,12 +269,7 @@ class Database implements DatabaseInterface
      * @param array|string $where
      * @param string $limit
      * @return mixed
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\GetDataException
-     * @throws Exceptions\QueryException
-     * @throws Exceptions\TableNotDefinedException
-     * @throws Exceptions\TooManyLoopsException
-     * @throws Exceptions\InvalidFieldException
+     * @throws Exceptions\Exception
      */
     public function insert(
         $fields,
@@ -353,13 +325,8 @@ class Database implements DatabaseInterface
      * @param string|array $fields
      * @param string $table
      * @param array|string $where
-     * @return bool|mixed|mysqli_result
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\GetDataException
-     * @throws Exceptions\QueryException
-     * @throws Exceptions\TableNotDefinedException
-     * @throws Exceptions\TooManyLoopsException
-     * @throws Exceptions\InvalidFieldException
+     * @return mixed
+     * @throws Exceptions\Exception
      */
     public function save($fields, string $table, $where = '')
     {
@@ -367,10 +334,7 @@ class Database implements DatabaseInterface
             $mode = 'insert';
         } else {
             $result = $this->select('*', $table, $where);
-            if (! $result instanceof mysqli_result) {
-                throw (new Exceptions\QueryException('Need mysqli_result'))
-                    ->setQuery($this->getLastQuery());
-            }
+
             if ($this->getRecordCount($result) === 0) {
                 $mode = 'insert';
             } else {
@@ -387,36 +351,33 @@ class Database implements DatabaseInterface
      */
     public function isResult($result) : bool
     {
-        return $result instanceof mysqli_result;
+        return $this->getDriver()->isResult($result);
     }
 
     /**
-     * @param mysqli_result $result
+     * @param $result
      * @return int
      */
-    public function numFields(mysqli_result $result) : int
+    public function numFields($result) : int
     {
-        return $result->field_count;
+        return $this->getDriver()->numFields($result);
     }
 
     /**
-     * @param mysqli_result $result
+     * @param $result
      * @param int $col
      * @return string|null
      */
-    public function fieldName(mysqli_result $result, $col = 0) :? string
+    public function fieldName($result, $col = 0) :? string
     {
-        $field = $result->fetch_field_direct($col);
-
-        return $field->name ?? null;
+        return $this->getDriver()->fieldName($result, $col);
     }
 
     /**
      * @param string $charset
      * @param string|null $method
      * @return bool
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @throws Exceptions\Exception
      */
     public function setCharset(string $charset, $method = null) : bool
     {
@@ -426,7 +387,7 @@ class Database implements DatabaseInterface
 
         $tStart = microtime(true);
 
-        $result = $this->getConnect()->set_charset($charset);
+        $result = $this->getDriver()->setCharset($charset);
 
         $this->queryTime += microtime(true) - $tStart;
 
@@ -436,14 +397,13 @@ class Database implements DatabaseInterface
     /**
      * @param string $name
      * @return bool
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @throws Exceptions\Exception
      */
     public function selectDb(string $name) : bool
     {
         $tStart = microtime(true);
 
-        $result = $this->getConnect()->select_db($name);
+        $result = $this->getDriver()->selectDb($name);
 
         $this->queryTime += microtime(true) - $tStart;
 
@@ -451,123 +411,74 @@ class Database implements DatabaseInterface
     }
 
     /**
-     * @param mysqli_result $result
+     * @param $result
      * @return int
      */
-    public function getRecordCount(mysqli_result $result) : int
+    public function getRecordCount($result) : int
     {
-        return $result->num_rows;
+        return $this->getDriver()->getRecordCount($result);
     }
 
     /**
-     * @param mysqli_result $result
+     * @param $result
      * @param string $mode
      * @return array|mixed|object|\stdClass
-     * @throws Exceptions\UnknownFetchTypeException
+     * @throws Exceptions\Exception
      */
-    public function getRow(mysqli_result $result, $mode = 'assoc')
+    public function getRow($result, $mode = 'assoc')
     {
-        switch ($mode) {
-            case 'assoc':
-                $out = $result->fetch_assoc();
-                break;
-            case 'num':
-                $out = $result->fetch_row();
-                break;
-            case 'object':
-                $out = $result->fetch_object();
-                break;
-            case 'both':
-                $out = $result->fetch_array(MYSQLI_BOTH);
-                break;
-            default:
-                throw new Exceptions\UnknownFetchTypeException(
-                    "Unknown get type ($mode) specified for fetchRow - must be empty, 'assoc', 'num' or 'both'."
-                );
-        }
-
-        return $out;
+        return $this->getDriver()->getRow($result, $mode);
     }
 
     /**
      * @param string string $name
      * @param mixed $result
      * @return array
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
-     * @throws Exceptions\UnknownFetchTypeException
+     * @throws Exceptions\Exception
      */
     public function getColumn(string $name, $result) : array
     {
-        $col = [];
-
-        if (! ($result instanceof mysqli_result)) {
+        if (\is_scalar($result)) {
             $result = $this->query($result);
         }
 
-        if ($result instanceof mysqli_result) {
-            while ($row = $this->getRow($result)) {
-                $col[] = $row[$name];
-            }
-        }
-
-        return $col;
+        return $this->getDriver()->getColumn($name, $result);
     }
 
     /**
      * @param mixed $result
      * @return array
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
-     * @throws Exceptions\UnknownFetchTypeException
+     * @throws Exceptions\Exception
      */
     public function getColumnNames($result) : array
     {
-        $names = [];
-
-        if (! ($result instanceof mysqli_result)) {
+        if (\is_scalar($result)) {
             $result = $this->query($result);
         }
 
-        if ($result instanceof mysqli_result) {
-            $limit = $this->numFields($result);
-            for ($i = 0; $i < $limit; $i++) {
-                $names[] = $this->fieldName($result, $i);
-            }
-        }
-
-        return $names;
+        return $this->getDriver()->getColumnNames($result);
     }
 
     /**
      * @param mixed $result
      * @return bool|mixed
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
-     * @throws Exceptions\UnknownFetchTypeException
+     * @throws Exceptions\Exception
      */
     public function getValue($result)
     {
-        $out = false;
-
-        if (! ($result instanceof mysqli_result)) {
+        if (\is_scalar($result)) {
             $result = $this->query($result);
         }
 
-        if ($result instanceof mysqli_result) {
-            $result = $this->getRow($result, 'num');
-            $out = $result[0] ?? false;
-        }
-
-        return $this->convertValue($out);
+        return $this->convertValue(
+            $this->getDriver()->getValue($result)
+        );
     }
 
     /**
      * @param string $table
      * @return array
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
-     * @throws Exceptions\UnknownFetchTypeException
+     * @throws Exceptions\Exception
      */
     public function getTableMetaData(string $table) : array
     {
@@ -575,24 +486,19 @@ class Database implements DatabaseInterface
         if (! empty($table)) {
             $sql = 'SHOW FIELDS FROM ' . $table;
             $result = $this->query($sql);
-            if ($result instanceof mysqli_result) {
-                while ($row = $this->getRow($result)) {
-                    $fieldName = $row['Field'];
-                    $metadata[$fieldName] = $row;
-                }
-            }
+            $metadata = $this->getDriver()->getTableMetaData($result);
         }
 
         return $metadata;
     }
 
     /**
-     * @param mysqli_result $result
+     * @param $result
      * @param bool $index
      * @return array
-     * @throws Exceptions\UnknownFetchTypeException
+     * @throws Exceptions\Exception
      */
-    public function makeArray(mysqli_result $result, bool $index = false) : array
+    public function makeArray($result, bool $index = false) : array
     {
         $rsArray = [];
         $iterator = 0;
@@ -607,19 +513,17 @@ class Database implements DatabaseInterface
 
     /**
      * @return string
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @throws Exceptions\Exception
      */
     public function getVersion() : string
     {
-        return $this->getConnect()->server_info;
+        return $this->getDriver()->getVersion();
     }
 
     /**
      * @param string $table
-     * @return bool|mysqli_result
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @return mixed
+     * @throws Exceptions\Exception
      */
     public function optimize(string $table)
     {
@@ -633,9 +537,8 @@ class Database implements DatabaseInterface
 
     /**
      * @param string $table
-     * @return bool|mysqli_result
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @return mixed
+     * @throws Exceptions\Exception
      */
     public function truncate(string $table)
     {
@@ -644,23 +547,21 @@ class Database implements DatabaseInterface
 
     /**
      * @return mixed
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @throws Exceptions\Exception
      */
     public function getInsertId()
     {
         return $this->convertValue(
-            $this->getConnect()->insert_id
+            $this->getDriver()->getInsertId()
         );
     }
 
     /**
      * @return int
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @throws Exceptions\Exception
      */
     public function getAffectedRows() : int
     {
-        return $this->getConnect()->affected_rows;
+        return $this->getDriver()->getAffectedRows();
     }
 }

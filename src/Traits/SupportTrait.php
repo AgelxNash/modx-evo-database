@@ -14,7 +14,7 @@ trait SupportTrait
      * @param string $table
      * @param bool $escape
      * @return string
-     * @throws Exceptions\TableNotDefinedException
+     * @throws Exceptions\Exception
      */
     public function getTableName(string $table, bool $escape = true): string
     {
@@ -30,7 +30,7 @@ trait SupportTrait
     /**
      * @param string $table
      * @return string
-     * @throws Exceptions\TableNotDefinedException
+     * @throws Exceptions\Exception
      */
     public function getFullTableName(string $table): string
     {
@@ -120,7 +120,7 @@ trait SupportTrait
     /**
      * @param string|null $value
      * @return string
-     * @throws Exceptions\InvalidFieldException
+     * @throws Exceptions\Exception
      */
     protected function prepareNull($value): string
     {
@@ -144,8 +144,7 @@ trait SupportTrait
      * @param int $level
      * @param bool $skipFieldNames
      * @return array|string
-     * @throws Exceptions\TooManyLoopsException
-     * @throws Exceptions\InvalidFieldException
+     * @throws Exceptions\Exception
      */
     protected function prepareValues($data, $level = 1, $skipFieldNames = false)
     {
@@ -239,7 +238,7 @@ trait SupportTrait
     /**
      * @param string|array $data
      * @return string
-     * @throws Exceptions\InvalidFieldException
+     * @throws Exceptions\Exception
      */
     protected function prepareValuesSet($data): string
     {
@@ -261,7 +260,7 @@ trait SupportTrait
      * @param string|array $data
      * @param bool $hasArray
      * @return string
-     * @throws Exceptions\TableNotDefinedException
+     * @throws Exceptions\Exception
      */
     protected function prepareFrom($data, bool $hasArray = false): string
     {
@@ -282,7 +281,7 @@ trait SupportTrait
     /**
      * @param array|string $data
      * @return string
-     * @throws Exceptions\InvalidFieldException
+     * @throws Exceptions\Exception
      */
     protected function prepareWhere($data): string
     {

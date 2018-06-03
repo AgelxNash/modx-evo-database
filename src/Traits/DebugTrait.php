@@ -1,7 +1,5 @@
 <?php namespace AgelxNash\Modx\Evo\Database\Traits;
 
-use mysqli;
-use mysqli_result;
 use AgelxNash\Modx\Evo\Database\Exceptions;
 
 trait DebugTrait
@@ -24,29 +22,26 @@ trait DebugTrait
     protected $timeFormat = '%2.5f';
 
     /**
-      * @return mysqli
-      * @throws Exceptions\ConnectException
-      * @throws Exceptions\QueryException
+      * @return mixed
+     * @throws Exceptions\Exception
       */
-    abstract public function getConnect() : mysqli;
+    abstract public function getDriver();
 
     /**
-     * @param mysqli_result $result
+     * @param $result
      * @return int
      */
-    abstract public function getRecordCount(mysqli_result $result) : int;
+    abstract public function getRecordCount($result) : int;
 
     /**
      * @return int
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @throws Exceptions\Exception
      */
     abstract public function getAffectedRows() : int;
 
     /**
      * @return string
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @throws Exceptions\Exception
      */
     public function getLastError() : string
     {
@@ -55,8 +50,7 @@ trait DebugTrait
 
     /**
      * @return int
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @throws Exceptions\Exception
      */
     public function getLastErrorNo() : int
     {
@@ -110,8 +104,7 @@ trait DebugTrait
     /**
      * @param null|string $query
      * @return bool
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @throws Exceptions\Exception
      */
     public function checkLastError($query = null) : bool
     {
@@ -124,12 +117,11 @@ trait DebugTrait
     }
 
     /**
-     * @param mysqli_result|bool $result
+     * @param mixed $result
      * @param string $sql
      * @param int $iteration
      * @param int $time
-     * @throws Exceptions\ConnectException
-     * @throws Exceptions\QueryException
+     * @throws Exceptions\Exception
      */
     protected function collectQuery($result, string $sql, int $iteration, int $time) : void
     {
@@ -149,7 +141,7 @@ trait DebugTrait
         $this->queryCollection[$iteration] = [
             'sql' => $sql,
             'time' => $time,
-            'rows' => (stripos($sql, 'SELECT') === 0 && $result instanceof mysqli_result) ?
+            'rows' => (stripos($sql, 'SELECT') === 0 && $this->getDriver()->isResult($result)) ?
                 $this->getRecordCount($result) : $this->getAffectedRows(),
             'path' => $path,
             //'event' => $modx->event->name,

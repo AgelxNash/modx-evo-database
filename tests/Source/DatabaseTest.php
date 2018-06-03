@@ -1,4 +1,4 @@
-<?php namespace AgelxNash\Modx\Evo\Database\Tests;
+<?php namespace AgelxNash\Modx\Evo\Database\Tests\Source;
 
 use PHPUnit\Framework\TestCase;
 use AgelxNash\Modx\Evo\Database;

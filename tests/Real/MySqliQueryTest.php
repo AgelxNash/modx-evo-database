@@ -1,4 +1,4 @@
-<?php namespace AgelxNash\Modx\Evo\Database\Tests;
+<?php namespace AgelxNash\Modx\Evo\Database\Tests\Real;
 
 use PHPUnit\Framework\TestCase;
 use AgelxNash\Modx\Evo\Database;
@@ -7,7 +7,7 @@ use mysqli_result;
 use ReflectionClass;
 use ReflectionMethod;
 
-class QueryTest extends TestCase
+class MySqliQuery extends TestCase
 {
     /**
      * @var Database\Database

@@ -18,7 +18,10 @@ try {
     $DB->connect();
 
     echo ' [ METHOD ] Eloquent' . PHP_EOL;
-    $out = AgelxNash\Modx\Evo\Database\Models\SiteContent::where('parent', '=', 0)->get();
+    $out = AgelxNash\Modx\Evo\Database\Models\SiteContent::where('parent', '=', 0)
+        ->orderBy('pagetitle', 'DESC')
+        ->limit(10)
+        ->get();
     foreach ($out as $item) {
         echo "\t [ DOCUMENT #ID " . $item->id . ' ] ' . $item->pagetitle . PHP_EOL;
     }

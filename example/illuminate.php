@@ -59,7 +59,10 @@ try {
     }
 
     echo ' [ METHOD ] Illuminate' . PHP_EOL;
-    $out = Illuminate\Database\Capsule\Manager::table('site_content')->where('parent', '=', 0)
+    $out = Illuminate\Database\Capsule\Manager::table('site_content')
+        ->where('parent', '=', 0)
+        ->orderBy('pagetitle', 'DESC')
+        ->limit(10)
         ->get();
     foreach ($out as $item) {
         echo "\t [ DOCUMENT #ID " . $item->id . ' ] ' . $item->pagetitle . PHP_EOL;

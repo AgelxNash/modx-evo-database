@@ -35,8 +35,10 @@ foreach ($DB->makeArray($result) as $item) {
 }
 ```
 
-#### Illuminate\Database
+#### Illuminate\Database and Eloquent
 `composer require "illuminate/database"` required when you need to use **IlluminateDriver**
+`composer require "illuminate/events"` required when you need to use observers with Eloquent
+
 ```php
 $DB = new AgelxNash\Modx\Evo\Database\Database(
     'localhost',
@@ -51,18 +53,39 @@ $DB = new AgelxNash\Modx\Evo\Database\Database(
 );
 $DB->connect();
 
-$results = Illuminate\Database\Capsule\Manager::table('site_content')->where('parent', '=', 0)->get();
+$table = $DB->getFullTableName('site_content');
+$result = $DB->query('SELECT * FROM ' . $table . ' WHERE parent = 0 ORDER BY pagetitle DESC LIMIT 10');
+foreach ($DB->makeArray($result) as $item) {
+    echo "\t [ DOCUMENT #ID " . $item['id'] . ' ] ' . $item['pagetitle'] . PHP_EOL;
+}
+
+$results = Illuminate\Database\Capsule\Manager::table('site_content')
+    ->where('parent', '=', 0)
+    ->orderBy('pagetitle', 'DESC')
+    ->limit(10)
+    ->get();
 foreach ($out as $item) {
     echo "\t [ DOCUMENT #ID " . $item->id . ' ] ' . $item->pagetitle . PHP_EOL;
 }
 
+$out = AgelxNash\Modx\Evo\Database\Models\SiteContent::where('parent', '=', 0)
+    ->orderBy('pagetitle', 'DESC')
+    ->limit(10)
+    ->get();
+foreach ($out as $item) {
+    echo "\t [ DOCUMENT #ID " . $item->id . ' ] ' . $item->pagetitle . PHP_EOL;
+}
+
+// create table
 Illuminate\Database\Capsule\Manager::schema()->create('users', function ($table) {
     $table->increments('id');
     $table->string('email')->unique();
     $table->timestamps();
 });
 ```
-[Read more about Illuminate\Database](https://laravel.com/docs/5.6/database)
+Read more about
+- [Illuminate\Database](https://laravel.com/docs/5.6/database)
+- [Eloquent](https://laravel.com/docs/5.6/eloquent)
 
 ### Author
 ---------

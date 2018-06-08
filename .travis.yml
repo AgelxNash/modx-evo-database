@@ -14,6 +14,7 @@ env:
     - DB_PREFIX='{PREFIX}'
     - DB_CHARSET='utf8mb4'
     - DB_METHOD='SET NAMES'
+    - DB_COLLATION='utf8mb4_unicode_ci'
 
 services:
   - mysql

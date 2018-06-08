@@ -10,9 +10,8 @@ class QueryException extends Exception
      */
     protected $code;
 
-    private   $previous;
-
-    public function __construct($message = "", $code = 0, Throwable $previous = null) {
+    public function __construct($message = "", $code = 0, Throwable $previous = null)
+    {
         parent::__construct($message, (int)$code, $previous);
 
         $this->code = $code;

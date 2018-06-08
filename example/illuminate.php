@@ -10,8 +10,8 @@ try {
         'modx_',
         'utf8mb4',
         'SET NAMES',
-        AgelxNash\Modx\Evo\Database\Drivers\EloquentDriver::class,
-        'utf8mb4_unicode_ci'
+        'utf8mb4_unicode_ci',
+        AgelxNash\Modx\Evo\Database\Drivers\IlluminateDriver::class
     );
     $DB->setDebug(true);
 

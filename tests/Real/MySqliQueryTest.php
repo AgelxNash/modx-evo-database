@@ -36,6 +36,7 @@ class MySqliQuery extends TestCase
             $_SERVER['DB_PREFIX'] ?? '{PREFIX}',
             $_SERVER['DB_CHARSET'] ?? 'utf8mb4',
             $_SERVER['DB_METHOD'] ?? 'SET NAMES',
+            $_SERVER['DB_COLLATION'] ?? 'utf8mb4_unicode_ci',
             MySqliDriver::class
         );
 

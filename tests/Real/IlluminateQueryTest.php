@@ -5,10 +5,10 @@ use AgelxNash\Modx\Evo\Database;
 use PDOStatement;
 use ReflectionClass;
 use ReflectionMethod;
-use AgelxNash\Modx\Evo\Database\Drivers\EloquentDriver;
+use AgelxNash\Modx\Evo\Database\Drivers\IlluminateDriver;
 use Illuminate;
 
-class EloquentQueryTest extends TestCase
+class IlluminateQueryTest extends TestCase
 {
     /**
      * @var Database\Database
@@ -36,7 +36,8 @@ class EloquentQueryTest extends TestCase
             $_SERVER['DB_PREFIX'] ?? '{PREFIX}',
             $_SERVER['DB_CHARSET'] ?? 'utf8mb4',
             $_SERVER['DB_METHOD'] ?? 'SET NAMES',
-            EloquentDriver::class
+            $_SERVER['DB_COLLATION'] ?? 'utf8mb4_unicode_ci',
+            IlluminateDriver::class
         );
 
         $this->instance->setDebug(true)->connect();
@@ -439,8 +440,6 @@ class EloquentQueryTest extends TestCase
                 $exception->getCode(),
                 'STEP 4/4'
             );
-
-
         }
     }
 

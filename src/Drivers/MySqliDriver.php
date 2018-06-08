@@ -145,13 +145,12 @@ class MySqliDriver implements DriverInterface
     /**
      * {@inheritDoc}
      */
-    public function setCharset(string $charset, $method = null) : bool
+    public function setCharset(string $charset, string $collation, $method = null) : bool
     {
         if ($method === null) {
             $method = $this->config['method'];
         }
-
-        if ($this->query($method . ' ' . $charset) === true) {
+        if ($this->query($method . ' ' . $charset . ' COLLATE ' . $collation) === true) {
             return $this->getConnect()->set_charset($charset);
         }
         return false;

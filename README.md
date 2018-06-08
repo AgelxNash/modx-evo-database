@@ -3,6 +3,7 @@
 
 ### Example
 ---------
+#### MySQLi
 ```php
 $DB = new AgelxNash\Modx\Evo\Database\Database(
     'localhost',
@@ -11,7 +12,8 @@ $DB = new AgelxNash\Modx\Evo\Database\Database(
     'secret',
     'modx_',
     'utf8mb4',
-    'SET NAMES'
+    'SET NAMES',
+    'utf8mb4_unicode_ci',
 );
 $DB->setDebug(true);
 $DB->connect();
@@ -32,6 +34,35 @@ foreach ($DB->makeArray($result) as $item) {
     echo "\t [ DOCUMENT #ID " . $item['id'] . ' ] ' . $item['pagetitle'] . PHP_EOL;
 }
 ```
+
+#### Illuminate\Database
+`composer require "illuminate/database"` required when you need to use **IlluminateDriver**
+```php
+$DB = new AgelxNash\Modx\Evo\Database\Database(
+    'localhost',
+    'modx',
+    'homestead',
+    'secret',
+    'modx_',
+    'utf8mb4',
+    'SET NAMES',
+    'utf8mb4_unicode_ci',
+    AgelxNash\Modx\Evo\Database\Drivers\IlluminateDriver::class
+);
+$DB->connect();
+
+$results = Illuminate\Database\Capsule\Manager::table('site_content')->where('parent', '=', 0)->get();
+foreach ($out as $item) {
+    echo "\t [ DOCUMENT #ID " . $item->id . ' ] ' . $item->pagetitle . PHP_EOL;
+}
+
+Illuminate\Database\Capsule\Manager::schema()->create('users', function ($table) {
+    $table->increments('id');
+    $table->string('email')->unique();
+    $table->timestamps();
+});
+```
+[Read more about Illuminate\Database](https://laravel.com/docs/5.6/database)
 
 ### Author
 ---------

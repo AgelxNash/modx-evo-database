@@ -9,6 +9,7 @@ $DB = new AgelxNash\Modx\Evo\Database\Database(
     'modx_',
     'utf8mb4',
     'SET NAMES',
+    'utf8mb4_unicode_ci',
     AgelxNash\Modx\Evo\Database\Drivers\MySqliDriver::class
 );
 $DB->setDebug(true);

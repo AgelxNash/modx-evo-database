@@ -28,8 +28,8 @@ class Database implements Interfaces\DatabaseInterface
      * @param string $prefix
      * @param string $charset
      * @param string $method
-     * @param string $driver
      * @param string $collation
+     * @param string $driver
      * @throws Exceptions\Exception
      */
     public function __construct(
@@ -40,8 +40,8 @@ class Database implements Interfaces\DatabaseInterface
         $prefix = '',
         $charset = 'utf8mb4',
         $method = 'SET CHARACTER SET',
-        $driver = Drivers\MySqliDriver::class,
-        $collation = 'utf8_unicode_ci'
+        $collation = 'utf8mb4_unicode_ci',
+        $driver = Drivers\MySqliDriver::class
     ) {
         $base = trim($base, '`');
 
@@ -111,7 +111,11 @@ class Database implements Interfaces\DatabaseInterface
             $this->connectionTime = $totalTime;
         }
 
-        $this->setCharset($this->getConfig('charset'), $this->getConfig('method'));
+        $this->setCharset(
+            $this->getConfig('charset'),
+            $this->getConfig('collation'),
+            $this->getConfig('method')
+        );
 
         return $out;
     }
@@ -368,15 +372,16 @@ class Database implements Interfaces\DatabaseInterface
 
     /**
      * @param string $charset
+     * @param string $collation
      * @param string|null $method
      * @return bool
      * @throws Exceptions\Exception
      */
-    public function setCharset(string $charset, $method = null) : bool
+    public function setCharset(string $charset, string $collation, $method = null) : bool
     {
         $tStart = microtime(true);
 
-        $result = $this->getDriver()->setCharset($charset, $method);
+        $result = $this->getDriver()->setCharset($charset, $collation, $method);
 
         $this->queryTime += microtime(true) - $tStart;
 

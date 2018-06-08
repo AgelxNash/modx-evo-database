@@ -8,8 +8,7 @@ enabled:
   - no_unused_imports
 
 finder:
-  exclude:
-    - "example.php"
   path:
+    - "example"
     - "tests"
     - "install"

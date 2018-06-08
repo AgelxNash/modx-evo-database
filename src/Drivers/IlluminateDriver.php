@@ -6,7 +6,7 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 use Illuminate\Database\Connection;
 use PDOStatement;
 
-class EloquentDriver implements DriverInterface
+class IlluminateDriver implements DriverInterface
 {
     /**
      * @var Connection
@@ -150,7 +150,6 @@ class EloquentDriver implements DriverInterface
      */
     public function getVersion() : string
     {
-
         return $this->getConnect()->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION);
         //return $this->getConnect()->server_info;
     }
@@ -167,13 +166,13 @@ class EloquentDriver implements DriverInterface
     /**
      * {@inheritDoc}
      */
-    public function setCharset(string $charset, $method = null) : bool
+    public function setCharset(string $charset, string $collation, $method = null) : bool
     {
         if ($method === null) {
             $method = $this->config['method'];
         }
 
-        return (bool)$this->query($method . ' ' . $charset);
+        return (bool)$this->query($method . ' ' . $charset . ' COLLATE ' . $collation);
     }
 
     /**
@@ -254,12 +253,13 @@ class EloquentDriver implements DriverInterface
      */
     public function query(string $query)
     {
+        $result = null;
         try {
             $result = $this->getConnect()->getPdo()->prepare(
                 $query,
-                array(
+                [
                     \PDO::ATTR_CURSOR => \PDO::CURSOR_SCROLL
-                )
+                ]
             );
             $result->setFetchMode(\PDO::FETCH_ASSOC);
             if ($result->execute() === false) {

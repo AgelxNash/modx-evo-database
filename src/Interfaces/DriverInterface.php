@@ -56,10 +56,11 @@ interface DriverInterface
 
     /**
      * @param string $charset
+     * @param string $collation
      * @param null|string $method
      * @return bool
      */
-    public function setCharset(string $charset, $method = null) : bool;
+    public function setCharset(string $charset, string $collation, $method = null) : bool;
 
     /**
      * @param $result

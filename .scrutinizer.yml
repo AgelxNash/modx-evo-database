@@ -2,7 +2,7 @@ filter:
     paths:
         - 'src/*'
     excluded_paths:
-        - 'example.php'
+        - 'example/*'
         - 'test/*'
         - 'vendor/*'
 build:
@@ -26,6 +26,7 @@ build:
           DB_PREFIX: '{PREFIX}'
           DB_CHARSET: 'utf8mb4'
           DB_METHOD: 'SET NAMES'
+          DB_COLLATION: 'utf8mb4_unicode_ci'
     dependencies:
         before:
             - mysql -h 127.0.0.1 -u root -e "SET GLOBAL sql_mode = ''"

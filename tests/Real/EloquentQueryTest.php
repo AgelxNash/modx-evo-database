@@ -2,13 +2,13 @@
 
 use PHPUnit\Framework\TestCase;
 use AgelxNash\Modx\Evo\Database;
-use mysqli;
-use mysqli_result;
+use PDOStatement;
 use ReflectionClass;
 use ReflectionMethod;
-use AgelxNash\Modx\Evo\Database\Drivers\MySqliDriver;
+use AgelxNash\Modx\Evo\Database\Drivers\EloquentDriver;
+use Illuminate;
 
-class MySqliQuery extends TestCase
+class EloquentQueryTest extends TestCase
 {
     /**
      * @var Database\Database
@@ -22,9 +22,9 @@ class MySqliQuery extends TestCase
 
     protected function setUp()
     {
-        if (! extension_loaded('mysqli')) {
+        if (! class_exists('\Illuminate\Database\Connection')) {
             $this->markTestSkipped(
-                'The MySQLi extension is not available.'
+                'The Illuminate\Database\Connection class is not available.'
             );
         }
 
@@ -36,7 +36,7 @@ class MySqliQuery extends TestCase
             $_SERVER['DB_PREFIX'] ?? '{PREFIX}',
             $_SERVER['DB_CHARSET'] ?? 'utf8mb4',
             $_SERVER['DB_METHOD'] ?? 'SET NAMES',
-            MySqliDriver::class
+            EloquentDriver::class
         );
 
         $this->instance->setDebug(true)->connect();
@@ -47,7 +47,7 @@ class MySqliQuery extends TestCase
     public function testConnect()
     {
         $this->assertInstanceOf(
-            mysqli::class,
+            Illuminate\Database\ConnectionInterface::class,
             $this->instance->getDriver()->getConnect()
         );
     }
@@ -70,7 +70,7 @@ class MySqliQuery extends TestCase
         );
 
         $this->assertInstanceOf(
-            mysqli::class,
+            Illuminate\Database\ConnectionInterface::class,
             $this->instance->getDriver()->getConnect()
         );
     }
@@ -321,17 +321,17 @@ class MySqliQuery extends TestCase
     public function testSelect()
     {
         $this->assertInstanceOf(
-            mysqli_result::class,
+            PDOStatement::class,
             $this->instance->query('SELECT * FROM ' . $this->table . ' WHERE parent = 0 ORDER BY pagetitle DESC LIMIT 10')
         );
 
         $this->assertInstanceOf(
-            mysqli_result::class,
+            PDOStatement::class,
             $this->instance->select('*', $this->table, 'parent = 0', 'pagetitle DESC', '10')
         );
 
         $this->assertInstanceOf(
-            mysqli_result::class,
+            PDOStatement::class,
             $this->instance->select(
                 ['id', 'pagetitle', 'title' => 'longtitle'],
                 ['c' => $this->table],
@@ -342,7 +342,7 @@ class MySqliQuery extends TestCase
         );
 
         $this->assertInstanceOf(
-            mysqli_result::class,
+            PDOStatement::class,
             $this->instance->select(
                 ['id', 'pagetitle', 'title' => 'longtitle'],
                 ['c' => $this->table],
@@ -356,7 +356,7 @@ class MySqliQuery extends TestCase
     public function testQuery()
     {
         $this->assertInstanceOf(
-            mysqli_result::class,
+            PDOStatement::class,
             $this->instance->query([
                 'SELECT *',
                 'FROM ' . $this->table,
@@ -429,16 +429,18 @@ class MySqliQuery extends TestCase
 
             $this->assertTrue(false, 'STEP 3/3 (Need QueryException)');
         } catch (Database\Exceptions\QueryException $exception) {
+            $this->assertThat(
+                $exception->getQuery(),
+                $this->isType('string')
+            );
+
             $this->assertEquals(
                 '23000',
                 $exception->getCode(),
                 'STEP 4/4'
             );
 
-            $this->assertThat(
-                $exception->getQuery(),
-                $this->isType('string')
-            );
+
         }
     }
 
@@ -464,7 +466,7 @@ class MySqliQuery extends TestCase
             );
 
             $this->assertEquals(
-                1050,
+                '42S01',
                 $this->instance->getLastErrorNo()
             );
 
@@ -646,11 +648,13 @@ class MySqliQuery extends TestCase
 
     public function testGetRow()
     {
+        $this->markTestSkipped('No implemented');
+
         $query = 'SELECT `id`, `alias` FROM ' . $this->table . ' WHERE id = 1';
 
         $result = $this->instance->query($query);
         $this->assertInstanceOf(
-            mysqli_result::class,
+            PDOStatement::class,
             $result
         );
 

@@ -2,18 +2,23 @@
 
 use AgelxNash\Modx\Evo\Database\Interfaces\DriverInterface;
 use AgelxNash\Modx\Evo\Database\Exceptions;
-use mysqli;
-use mysqli_result;
-use mysqli_sql_exception;
-use mysqli_driver;
-use ReflectionClass;
+use Illuminate\Database\Capsule\Manager as Capsule;
+use Illuminate\Database\Connection;
+use PDOStatement;
 
-class MySqliDriver implements DriverInterface
+class EloquentDriver implements DriverInterface
 {
     /**
-     * @var mysqli
+     * @var Connection
      */
     protected $conn;
+
+    /**
+     * @var Capsule
+     */
+    protected $capsule;
+
+    private $affected_rows = 0;
 
     /**
      * @var array
@@ -21,21 +26,34 @@ class MySqliDriver implements DriverInterface
     protected $config;
 
     /**
+     * @var array
+     */
+    public $lastError;
+
+    /**
+     * @var string
+     */
+    public $lastErrorNo;
+
+    protected $driver = 'mysql';
+
+    /**
      * {@inheritDoc}
      */
     public function __construct(array $config = [])
     {
-        $driver = new mysqli_driver();
-        $driver->report_mode = MYSQLI_REPORT_STRICT | MYSQLI_REPORT_ERROR;
+        $this->capsule = new Capsule;
+
+        $this->capsule->setAsGlobal();
 
         $this->config = $config;
     }
 
     /**
-     * @return mixed
+     * @return Connection
      * @throws Exceptions\Exception
      */
-    public function getConnect()
+    public function getConnect() : Connection
     {
         if (! $this->isConnected()) {
             return $this->connect();
@@ -45,29 +63,25 @@ class MySqliDriver implements DriverInterface
     }
 
     /**
-     * @return mysqli
+     * @return
      * @throws Exceptions\Exception
      */
-    public function connect() : mysqli
+    public function connect() : Connection
     {
         try {
-            $this->conn = new mysqli(
-                $this->config['host'],
-                $this->config['user'],
-                $this->config['pass'],
-                $this->config['base']
-            );
+            $this->capsule->addConnection([
+                'driver'    => $this->driver,
+                'host'      => $this->config['host'],
+                'database'  => $this->config['base'],
+                'username'  => $this->config['user'],
+                'password'  => $this->config['pass'],
+                'charset'   => $this->config['charset'],
+                'collation' => $this->config['collation'],
+                'prefix'    => $this->config['prefix'],
+            ]);
 
-            if ($this->isConnected() && $this->getConnect()->connect_error) {
-                throw new Exceptions\ConnectException($this->conn->connect_error);
-            }
-
-            if (! $this->isConnected()) {
-                throw new Exceptions\ConnectException(
-                    $this->getLastError() ?: 'Failed to create the database connection!'
-                );
-            }
-        } catch (mysqli_sql_exception $exception) {
+            $this->conn = $this->capsule->getConnection();
+        } catch (\Exception $exception) {
             throw new Exceptions\ConnectException($exception->getMessage(), $exception->getCode());
         }
 
@@ -80,7 +94,7 @@ class MySqliDriver implements DriverInterface
     public function disconnect() : DriverInterface
     {
         if ($this->isConnected()) {
-            $this->conn->close();
+            $this->conn->disconnect();
         }
 
         $this->conn = null;
@@ -93,7 +107,7 @@ class MySqliDriver implements DriverInterface
      */
     public function isConnected() : bool
     {
-        return ($this->conn instanceof mysqli);
+        return ($this->conn instanceof Connection && $this->conn->getDatabaseName());
     }
 
     /**
@@ -103,7 +117,13 @@ class MySqliDriver implements DriverInterface
      */
     public function escape($data)
     {
-        return $this->getConnect()->escape_string($data);
+        /**
+         * It's not secure
+         * But need for backward compatibility
+         */
+
+        $quote = $this->getConnect()->getPdo()->quote($data);
+        return strpos($quote, '\'') === 0 ? mb_substr($quote, 1, -1) : $quote;
     }
 
     /**
@@ -112,7 +132,7 @@ class MySqliDriver implements DriverInterface
      */
     public function getInsertId()
     {
-        return $this->getConnect()->insert_id;
+        return $this->getConnect()->getPdo()->lastInsertId();
     }
 
     /**
@@ -121,7 +141,7 @@ class MySqliDriver implements DriverInterface
      */
     public function getAffectedRows() : int
     {
-        return $this->getConnect()->affected_rows;
+        return $this->affected_rows;
     }
 
     /**
@@ -130,16 +150,18 @@ class MySqliDriver implements DriverInterface
      */
     public function getVersion() : string
     {
-        return $this->getConnect()->server_info;
+
+        return $this->getConnect()->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION);
+        //return $this->getConnect()->server_info;
     }
 
     /**
-     * @param mysqli_result $result
+     * @param PDOStatement $result
      * @return int
      */
     public function getRecordCount($result) : int
     {
-        return $result->num_rows;
+        return $result->rowCount();
     }
 
     /**
@@ -151,10 +173,7 @@ class MySqliDriver implements DriverInterface
             $method = $this->config['method'];
         }
 
-        if ($this->query($method . ' ' . $charset) === true) {
-            return $this->getConnect()->set_charset($charset);
-        }
-        return false;
+        return (bool)$this->query($method . ' ' . $charset);
     }
 
     /**
@@ -163,28 +182,27 @@ class MySqliDriver implements DriverInterface
      */
     public function isResult($result) : bool
     {
-        return $result instanceof mysqli_result;
+        return $result instanceof PDOStatement;
     }
 
     /**
-     * @param mysqli_result $result
+     * @param PDOStatement $result
      * @return int
      */
     public function numFields($result) : int
     {
-        return $result->field_count;
+        return $result->columnCount();
     }
 
     /**
-     * @param mysqli_result $result
+     * @param PDOStatement $result
      * @param int $col
      * @return string|null
      */
     public function fieldName($result, $col = 0) :? string
     {
-        $field = $result->fetch_field_direct($col);
-
-        return $field->name ?? null;
+        $field = $result->getColumnMeta($col);
+        return $field['name'] ?? null;
     }
 
     /**
@@ -194,11 +212,13 @@ class MySqliDriver implements DriverInterface
      */
     public function selectDb(string $name) : bool
     {
-        return $this->getConnect()->select_db($name);
+        $this->getConnect()->setDatabaseName($name);
+
+        return true;
     }
 
     /**
-     * @param mysqli_result $result
+     * @param PDOStatement $result
      * @param string $mode
      * @return array|mixed|object|\stdClass
      * @throws Exceptions\Exception
@@ -207,16 +227,16 @@ class MySqliDriver implements DriverInterface
     {
         switch ($mode) {
             case 'assoc':
-                $out = $result->fetch_assoc();
+                $out = $result->fetch(\PDO::FETCH_ASSOC);
                 break;
             case 'num':
-                $out = $result->fetch_row();
+                $out = $result->fetch(\PDO::FETCH_NUM);
                 break;
             case 'object':
-                $out = $result->fetch_object();
+                $out = $result->fetchObject();
                 break;
             case 'both':
-                $out = $result->fetch_array(MYSQLI_BOTH);
+                $out = $result->fetch(\PDO::FETCH_BOTH);
                 break;
             default:
                 throw new Exceptions\UnknownFetchTypeException(
@@ -235,12 +255,24 @@ class MySqliDriver implements DriverInterface
     public function query(string $query)
     {
         try {
-            $result = $this->getConnect()->query($query);
-        } catch (mysqli_sql_exception $exception) {
-            $reflect = new ReflectionClass($exception);
-            $property = $reflect->getProperty('sqlstate');
-            $property->setAccessible(true);
-            throw (new Exceptions\QueryException($exception->getMessage(), $property->getValue($exception)))
+            $result = $this->getConnect()->getPdo()->prepare(
+                $query,
+                array(
+                    \PDO::ATTR_CURSOR => \PDO::CURSOR_SCROLL
+                )
+            );
+            $result->setFetchMode(\PDO::FETCH_ASSOC);
+            if ($result->execute() === false) {
+                $result = false;
+            }
+            $this->affected_rows = \is_bool($result) ? 0 : $result->rowCount();
+            if ($this->affected_rows === 0 && $this->isResult($result) && 0 !== mb_stripos(trim($query), 'SELECT')) {
+                $result = true;
+            }
+        } catch (\Exception $exception) {
+            $this->lastError = $this->isResult($result) ? $result->errorInfo() : [];
+            $this->lastErrorNo = $this->isResult($result) ? ($result->errorCode() ?? $exception->getCode()) : '';
+            throw (new Exceptions\QueryException($exception->getMessage(), $exception->getCode()))
                 ->setQuery($query);
         }
 
@@ -257,7 +289,7 @@ class MySqliDriver implements DriverInterface
     {
         $col = [];
 
-        if ($result instanceof mysqli_result) {
+        if ($result instanceof PDOStatement) {
             while ($row = $this->getRow($result)) {
                 $col[] = $row[$name];
             }
@@ -274,7 +306,7 @@ class MySqliDriver implements DriverInterface
     {
         $names = [];
 
-        if ($result instanceof mysqli_result) {
+        if ($result instanceof PDOStatement) {
             $limit = $this->numFields($result);
             for ($i = 0; $i < $limit; $i++) {
                 $names[] = $this->fieldName($result, $i);
@@ -293,7 +325,7 @@ class MySqliDriver implements DriverInterface
     {
         $out = false;
 
-        if ($result instanceof mysqli_result) {
+        if ($result instanceof PDOStatement) {
             $result = $this->getRow($result, 'num');
             $out = $result[0] ?? false;
         }
@@ -310,7 +342,7 @@ class MySqliDriver implements DriverInterface
     {
         $out = [];
 
-        if ($result instanceof mysqli_result) {
+        if ($result instanceof PDOStatement) {
             while ($row = $this->getRow($result)) {
                 $fieldName = $row['Field'];
                 $out[$fieldName] = $row;
@@ -326,7 +358,7 @@ class MySqliDriver implements DriverInterface
      */
     public function getLastError() :? string
     {
-        return $this->getConnect()->error;
+        return (string)($this->getConnect()->getPdo()->errorInfo()[2] ?? $this->lastError[2]);
     }
 
     /**
@@ -335,14 +367,15 @@ class MySqliDriver implements DriverInterface
      */
     public function getLastErrorNo() :? string
     {
-        return (string)$this->getConnect()->errno;
+        return (string)($this->getConnect()->getPdo()->errorInfo()[1] ?? $this->lastErrorNo);
     }
 
     /**
      * {@inheritDoc}
+     * @param \PDOStatement $result
      */
     public function dataSeek(&$result, $position) : bool
     {
-        return $result->data_seek($position);
+        throw new Exceptions\DriverException('No implemented');
     }
 }

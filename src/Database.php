@@ -29,6 +29,7 @@ class Database implements Interfaces\DatabaseInterface
      * @param string $charset
      * @param string $method
      * @param string $driver
+     * @param string $collation
      * @throws Exceptions\Exception
      */
     public function __construct(
@@ -39,7 +40,8 @@ class Database implements Interfaces\DatabaseInterface
         $prefix = '',
         $charset = 'utf8mb4',
         $method = 'SET CHARACTER SET',
-        $driver = Drivers\MySqliDriver::class
+        $driver = Drivers\MySqliDriver::class,
+        $collation = 'utf8_unicode_ci'
     ) {
         $base = trim($base, '`');
 
@@ -50,7 +52,8 @@ class Database implements Interfaces\DatabaseInterface
             'pass',
             'prefix',
             'charset',
-            'method'
+            'method',
+            'collation'
         ));
 
         if (! \in_array(Interfaces\DriverInterface::class, class_implements($driver), true)) {
@@ -166,7 +169,9 @@ class Database implements Interfaces\DatabaseInterface
         }
         $this->lastQuery = $sql;
 
-        $result = $this->getDriver()->query($this->getLastQuery());
+        $result = $this->getDriver()->query(
+            $this->getLastQuery()
+        );
 
         if ($result === false) {
             $this->checkLastError($this->getLastQuery());
@@ -204,7 +209,8 @@ class Database implements Interfaces\DatabaseInterface
         $orderBy = $this->prepareOrder($orderBy);
         $limit = $this->prepareOrder($limit);
 
-        return $this->query("DELETE FROM {$table} {$where} {$orderBy} {$limit}");
+        $result = $this->query("DELETE FROM {$table} {$where} {$orderBy} {$limit}");
+        return $this->isResult($result) ? true : $result;
     }
 
     /**
@@ -243,7 +249,8 @@ class Database implements Interfaces\DatabaseInterface
         }
         $where = $this->prepareWhere($where);
 
-        return $this->query("UPDATE {$table} {$values} {$where}");
+        $result = $this->query("UPDATE {$table} {$values} {$where}");
+        return $this->isResult($result) ? true : $result;
     }
 
     /**
@@ -297,6 +304,7 @@ class Database implements Interfaces\DatabaseInterface
             $lid = $this->query(
                 "INSERT INTO {$table} ({$useFields}) SELECT {$fromFields} FROM {$fromTable} {$where} {$limit}"
             );
+            $lid = $this->isResult($lid) ? true : $lid;
         }
 
         if ($lid === null && ($lid = $this->getInsertId()) === false) {
@@ -366,13 +374,9 @@ class Database implements Interfaces\DatabaseInterface
      */
     public function setCharset(string $charset, $method = null) : bool
     {
-        if ($method !== null) {
-            $this->query($method . ' ' . $charset);
-        }
-
         $tStart = microtime(true);
 
-        $result = $this->getDriver()->setCharset($charset);
+        $result = $this->getDriver()->setCharset($charset, $method);
 
         $this->queryTime += microtime(true) - $tStart;
 
@@ -444,7 +448,6 @@ class Database implements Interfaces\DatabaseInterface
         if (\is_scalar($result)) {
             $result = $this->query($result);
         }
-
         return $this->getDriver()->getColumnNames($result);
     }
 
@@ -521,7 +524,7 @@ class Database implements Interfaces\DatabaseInterface
             $result = $this->alterTable($table);
         }
 
-        return $result;
+        return $this->isResult($result) ? true : $result;
     }
 
     /**
@@ -531,7 +534,9 @@ class Database implements Interfaces\DatabaseInterface
      */
     public function alterTable(string $table)
     {
-        return $this->query('ALTER TABLE ' . $table);
+        $result = $this->query('ALTER TABLE ' . $table);
+
+        return $this->isResult($result) ? true : $result;
     }
 
     /**
@@ -541,7 +546,9 @@ class Database implements Interfaces\DatabaseInterface
      */
     public function truncate(string $table)
     {
-        return $this->query('TRUNCATE ' . $table);
+        $result = $this->query('TRUNCATE ' . $table);
+
+        return $this->isResult($result) ? $this->getValue($result) : $result;
     }
 
     /**

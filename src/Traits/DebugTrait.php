@@ -12,11 +12,11 @@ trait DebugTrait
     protected $connectionTime = 0;
 
     public $ignoreErrors = [
-        1054, // SQLSTATE: 42S22 (ER_BAD_FIELD_ERROR) Unknown column '%s' in '%s'
-        1060, // SQLSTATE: 42S21 (ER_DUP_FIELDNAME) Duplicate column name '%s'
-        1061, // SQLSTATE: 42000 (ER_DUP_KEYNAME) Duplicate key name '%s'
-        1062, // SQLSTATE: 23000 (ER_DUP_ENTRY) Duplicate entry '%s' for key %d
-        1091 // SQLSTATE: 42000 (ER_CANT_DROP_FIELD_OR_KEY) Can't DROP '%s'; check that column/key exists
+        '42S22', // SQLSTATE: 42S22 (ER_BAD_FIELD_ERROR) Unknown column '%s' in '%s'
+        '42S21', // SQLSTATE: 42S21 (ER_DUP_FIELDNAME) Duplicate column name '%s'
+        '42000', // SQLSTATE: 42000 (ER_DUP_KEYNAME) Duplicate key name '%s'
+        '23000', // SQLSTATE: 23000 (ER_DUP_ENTRY) Duplicate entry '%s' for key %d
+        '42000' // SQLSTATE: 42000 (ER_CANT_DROP_FIELD_OR_KEY) Can't DROP '%s'; check that column/key exists
     ];
 
     protected $timeFormat = '%2.5f';
@@ -40,21 +40,21 @@ trait DebugTrait
     abstract public function getAffectedRows() : int;
 
     /**
-     * @return string
+     * @return string|null
      * @throws Exceptions\Exception
      */
-    public function getLastError() : string
+    public function getLastError() :? string
     {
         return $this->getDriver()->getLastError();
     }
 
     /**
-     * @return int
+     * @return string|null
      * @throws Exceptions\Exception
      */
-    public function getLastErrorNo() : int
+    public function getLastErrorNo() :? string
     {
-        return $this->getDriver()->getLastErrorNo();
+        return (string)$this->getDriver()->getLastErrorNo();
     }
 
     /**

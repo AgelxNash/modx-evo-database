@@ -56,9 +56,10 @@ interface DriverInterface
 
     /**
      * @param string $charset
+     * @param null|string $method
      * @return bool
      */
-    public function setCharset(string $charset) : bool;
+    public function setCharset(string $charset, $method = null) : bool;
 
     /**
      * @param $result
@@ -124,19 +125,19 @@ interface DriverInterface
     public function getTableMetaData($result);
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getLastError() : string;
+    public function getLastError() :? string;
 
     /**
-     * @return int
+     * @return string|null
      */
-    public function getLastErrorNo() : int;
+    public function getLastErrorNo() :? string;
 
     /**
      * @param $result
      * @param int $position
      * @return bool
      */
-    public function dataSeek($result, $position) : bool;
+    public function dataSeek(&$result, $position) : bool;
 }

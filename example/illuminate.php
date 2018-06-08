@@ -58,7 +58,7 @@ try {
         }
     }
 
-    echo ' [ METHOD ] eloquent' . PHP_EOL;
+    echo ' [ METHOD ] Illuminate' . PHP_EOL;
     $out = Illuminate\Database\Capsule\Manager::table('site_content')->where('parent', '=', 0)
         ->get();
     foreach ($out as $item) {

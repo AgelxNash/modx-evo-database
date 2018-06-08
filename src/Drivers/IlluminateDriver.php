@@ -46,6 +46,8 @@ class IlluminateDriver implements DriverInterface
 
         $this->capsule->setAsGlobal();
 
+        $this->capsule->bootEloquent();
+
         $this->config = $config;
     }
 

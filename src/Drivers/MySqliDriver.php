@@ -334,7 +334,7 @@ class MySqliDriver implements DriverInterface
      */
     public function getLastErrorNo()
     {
-        return (string)$this->getConnect()->errno;
+        return (string)$this->getConnect()->sqlstate;
     }
 
     /**

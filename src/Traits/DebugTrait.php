@@ -31,19 +31,19 @@ trait DebugTrait
      * @param $result
      * @return int
      */
-    abstract public function getRecordCount($result) : int;
+    abstract public function getRecordCount($result);
 
     /**
      * @return int
      * @throws Exceptions\Exception
      */
-    abstract public function getAffectedRows() : int;
+    abstract public function getAffectedRows();
 
     /**
      * @return string|null
      * @throws Exceptions\Exception
      */
-    public function getLastError() :? string
+    public function getLastError()
     {
         return $this->getDriver()->getLastError();
     }
@@ -52,7 +52,7 @@ trait DebugTrait
      * @return string|null
      * @throws Exceptions\Exception
      */
-    public function getLastErrorNo() :? string
+    public function getLastErrorNo()
     {
         return (string)$this->getDriver()->getLastErrorNo();
     }
@@ -60,7 +60,7 @@ trait DebugTrait
     /**
      * @return array
      */
-    public function getIgnoreErrors() : array
+    public function getIgnoreErrors()
     {
         return $this->ignoreErrors;
     }
@@ -69,7 +69,7 @@ trait DebugTrait
      * @param int $error
      * @return DebugTrait
      */
-    public function addIgnoreErrors(int $error) : self
+    public function addIgnoreErrors($error)
     {
         $this->ignoreErrors[] = $error;
 
@@ -79,7 +79,7 @@ trait DebugTrait
     /**
      * @return DebugTrait
      */
-    public function flushIgnoreErrors() : self
+    public function flushIgnoreErrors()
     {
         $this->ignoreErrors = [];
 
@@ -90,7 +90,7 @@ trait DebugTrait
      * @param array $errors
      * @return DebugTrait
      */
-    public function setIgnoreErrors(array $errors = []) : self
+    public function setIgnoreErrors(array $errors = [])
     {
         $this->flushIgnoreErrors();
 
@@ -106,7 +106,7 @@ trait DebugTrait
      * @return bool
      * @throws Exceptions\Exception
      */
-    public function checkLastError($query = null) : bool
+    public function checkLastError($query = null)
     {
         if ($this->getIgnoreErrors() === [] || \in_array($this->getLastErrorNo(), $this->getIgnoreErrors(), true)) {
             return false;
@@ -123,7 +123,7 @@ trait DebugTrait
      * @param int $time
      * @throws Exceptions\Exception
      */
-    protected function collectQuery($result, string $sql, int $iteration, int $time) : void
+    protected function collectQuery($result, $sql, $iteration, $time)
     {
         $debug = debug_backtrace();
         array_shift($debug);
@@ -155,7 +155,7 @@ trait DebugTrait
     /**
      * @return string
      */
-    public function getLastQuery() : string
+    public function getLastQuery()
     {
         return $this->lastQuery;
     }
@@ -163,7 +163,7 @@ trait DebugTrait
     /**
      * @return array
      */
-    public function getAllExecutedQuery() : array
+    public function getAllExecutedQuery()
     {
         return $this->queryCollection;
     }
@@ -171,7 +171,7 @@ trait DebugTrait
     /**
      * @return $this
      */
-    public function flushExecutedQuery() : self
+    public function flushExecutedQuery()
     {
         $this->queryCollection = [];
         $this->executedQueries = 0;
@@ -184,7 +184,7 @@ trait DebugTrait
     /**
      * @return string
      */
-    public function renderExecutedQuery() : string
+    public function renderExecutedQuery()
     {
         $out = '';
 
@@ -214,7 +214,7 @@ trait DebugTrait
      * @param bool $format
      * @return string|float
      */
-    public function getConnectionTime(bool $format = false)
+    public function getConnectionTime($format = false)
     {
         return $format ? sprintf($this->timeFormat, $this->connectionTime) : $this->connectionTime;
     }
@@ -222,7 +222,7 @@ trait DebugTrait
     /**
      * @return string
      */
-    public function renderConnectionTime() : string
+    public function renderConnectionTime()
     {
         return '<fieldset style="text-align:left">' .
             '<legend>Database connection</legend>' .
@@ -235,7 +235,7 @@ trait DebugTrait
      * @param bool $flag
      * @return $this
      */
-    public function setDebug(bool $flag) : self
+    public function setDebug($flag)
     {
         $this->debug = $flag;
 
@@ -245,7 +245,7 @@ trait DebugTrait
     /**
      * @return bool
      */
-    public function isDebug() : bool
+    public function isDebug()
     {
         return $this->debug;
     }

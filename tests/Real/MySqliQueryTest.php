@@ -29,14 +29,14 @@ class MySqliQuery extends TestCase
         }
 
         $this->instance = new Database\Database(
-            $_SERVER['DB_HOST'] ?? 'localhost',
-            $_SERVER['DB_BASE'] ?? 'modx',
-            $_SERVER['DB_USER'] ?? 'homestead',
-            $_SERVER['DB_PASSWORD'] ?? 'secret',
-            $_SERVER['DB_PREFIX'] ?? '{PREFIX}',
-            $_SERVER['DB_CHARSET'] ?? 'utf8mb4',
-            $_SERVER['DB_METHOD'] ?? 'SET NAMES',
-            $_SERVER['DB_COLLATION'] ?? 'utf8mb4_unicode_ci',
+            isset($_SERVER['DB_HOST']) ? $_SERVER['DB_HOST'] : 'localhost',
+            isset($_SERVER['DB_BASE']) ? $_SERVER['DB_BASE'] : 'modx',
+            isset($_SERVER['DB_USER']) ? $_SERVER['DB_USER'] : 'homestead',
+            isset($_SERVER['DB_PASSWORD']) ? $_SERVER['DB_PASSWORD'] : 'secret',
+            isset($_SERVER['DB_PREFIX']) ? $_SERVER['DB_PREFIX'] : '{PREFIX}',
+            isset($_SERVER['DB_CHARSET']) ? $_SERVER['DB_CHARSET'] : 'utf8mb4',
+            isset($_SERVER['DB_METHOD']) ? $_SERVER['DB_METHOD'] : 'SET NAMES',
+            isset($_SERVER['DB_COLLATION']) ? $_SERVER['DB_COLLATION'] : 'utf8mb4_unicode_ci',
             MySqliDriver::class
         );
 

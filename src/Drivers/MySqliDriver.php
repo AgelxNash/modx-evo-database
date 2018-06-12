@@ -48,7 +48,7 @@ class MySqliDriver implements DriverInterface
      * @return mysqli
      * @throws Exceptions\Exception
      */
-    public function connect() : mysqli
+    public function connect()
     {
         try {
             $this->conn = new mysqli(
@@ -77,7 +77,7 @@ class MySqliDriver implements DriverInterface
     /**
      * {@inheritDoc}
      */
-    public function disconnect() : DriverInterface
+    public function disconnect()
     {
         if ($this->isConnected()) {
             $this->conn->close();
@@ -91,7 +91,7 @@ class MySqliDriver implements DriverInterface
     /**
      * @return bool
      */
-    public function isConnected() : bool
+    public function isConnected()
     {
         return ($this->conn instanceof mysqli);
     }
@@ -119,7 +119,7 @@ class MySqliDriver implements DriverInterface
      * @return int
      * @throws Exceptions\Exception
      */
-    public function getAffectedRows() : int
+    public function getAffectedRows()
     {
         return $this->getConnect()->affected_rows;
     }
@@ -128,7 +128,7 @@ class MySqliDriver implements DriverInterface
      * @return string
      * @throws Exceptions\Exception
      */
-    public function getVersion() : string
+    public function getVersion()
     {
         return $this->getConnect()->server_info;
     }
@@ -137,7 +137,7 @@ class MySqliDriver implements DriverInterface
      * @param mysqli_result $result
      * @return int
      */
-    public function getRecordCount($result) : int
+    public function getRecordCount($result)
     {
         return $result->num_rows;
     }
@@ -145,7 +145,7 @@ class MySqliDriver implements DriverInterface
     /**
      * {@inheritDoc}
      */
-    public function setCharset(string $charset, string $collation, $method = null) : bool
+    public function setCharset($charset, $collation, $method = null)
     {
         if ($method === null) {
             $method = $this->config['method'];
@@ -160,7 +160,7 @@ class MySqliDriver implements DriverInterface
      * @param $result
      * @return bool
      */
-    public function isResult($result) : bool
+    public function isResult($result)
     {
         return $result instanceof mysqli_result;
     }
@@ -169,7 +169,7 @@ class MySqliDriver implements DriverInterface
      * @param mysqli_result $result
      * @return int
      */
-    public function numFields($result) : int
+    public function numFields($result)
     {
         return $result->field_count;
     }
@@ -179,11 +179,11 @@ class MySqliDriver implements DriverInterface
      * @param int $col
      * @return string|null
      */
-    public function fieldName($result, $col = 0) :? string
+    public function fieldName($result, $col = 0)
     {
         $field = $result->fetch_field_direct($col);
 
-        return $field->name ?? null;
+        return isset($field->name) ? $field->name : null;
     }
 
     /**
@@ -191,7 +191,7 @@ class MySqliDriver implements DriverInterface
      * @return bool
      * @throws Exceptions\Exception
      */
-    public function selectDb(string $name) : bool
+    public function selectDb($name)
     {
         return $this->getConnect()->select_db($name);
     }
@@ -231,7 +231,7 @@ class MySqliDriver implements DriverInterface
      * @return mixed
      * @throws Exceptions\Exception
      */
-    public function query(string $query)
+    public function query($query)
     {
         try {
             $result = $this->getConnect()->query($query);
@@ -252,7 +252,7 @@ class MySqliDriver implements DriverInterface
      * @return array
      * @throws Exceptions\Exception
      */
-    public function getColumn(string $name, $result) : array
+    public function getColumn($name, $result)
     {
         $col = [];
 
@@ -269,7 +269,7 @@ class MySqliDriver implements DriverInterface
      * @param $result
      * @return array
      */
-    public function getColumnNames($result) : array
+    public function getColumnNames($result)
     {
         $names = [];
 
@@ -294,7 +294,7 @@ class MySqliDriver implements DriverInterface
 
         if ($result instanceof mysqli_result) {
             $result = $this->getRow($result, 'num');
-            $out = $result[0] ?? false;
+            $out = isset($result[0]) ? $result[0] : false;
         }
 
         return $out;
@@ -323,7 +323,7 @@ class MySqliDriver implements DriverInterface
      * @return string|null
      * @throws Exceptions\Exception
      */
-    public function getLastError() :? string
+    public function getLastError()
     {
         return $this->getConnect()->error;
     }
@@ -332,7 +332,7 @@ class MySqliDriver implements DriverInterface
      * @return string|null
      * @throws Exceptions\Exception
      */
-    public function getLastErrorNo() :? string
+    public function getLastErrorNo()
     {
         return (string)$this->getConnect()->errno;
     }
@@ -340,7 +340,7 @@ class MySqliDriver implements DriverInterface
     /**
      * {@inheritDoc}
      */
-    public function dataSeek(&$result, $position) : bool
+    public function dataSeek(&$result, $position)
     {
         return $result->data_seek($position);
     }

@@ -17,14 +17,14 @@ class QueryException extends Exception
         $this->code = $code;
     }
 
-    public function setQuery($query) : self
+    public function setQuery($query)
     {
         $this->query = $query;
 
         return $this;
     }
 
-    public function getQuery() : string
+    public function getQuery()
     {
         return $this->query;
     }

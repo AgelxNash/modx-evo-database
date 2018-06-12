@@ -20,12 +20,12 @@ interface DriverInterface
     /**
      * @return DriverInterface
      */
-    public function disconnect() : self;
+    public function disconnect();
 
     /**
      * @return bool
      */
-    public function isConnected() : bool;
+    public function isConnected();
 
     /**
      * @param $data
@@ -41,18 +41,18 @@ interface DriverInterface
     /**
      * @return int
      */
-    public function getAffectedRows() : int;
+    public function getAffectedRows();
 
     /**
      * @return string
      */
-    public function getVersion() : string;
+    public function getVersion();
 
     /**
      * @param $result
      * @return int
      */
-    public function getRecordCount($result) : int;
+    public function getRecordCount($result);
 
     /**
      * @param string $charset
@@ -60,32 +60,32 @@ interface DriverInterface
      * @param null|string $method
      * @return bool
      */
-    public function setCharset(string $charset, string $collation, $method = null) : bool;
+    public function setCharset($charset, $collation, $method = null);
 
     /**
      * @param $result
      * @return bool
      */
-    public function isResult($result) : bool;
+    public function isResult($result);
 
     /**
      * @param $result
      * @return int
      */
-    public function numFields($result) : int;
+    public function numFields($result);
 
     /**
      * @param $result
      * @param int $col
      * @return null|string
      */
-    public function fieldName($result, $col = 0) :? string;
+    public function fieldName($result, $col = 0);
 
     /**
      * @param string $name
      * @return bool
      */
-    public function selectDb(string $name) : bool;
+    public function selectDb($name);
 
     /**
      * @param $result
@@ -98,20 +98,20 @@ interface DriverInterface
      * @param string $query
      * @return mixed
      */
-    public function query(string $query);
+    public function query($query);
 
     /**
      * @param string $name
      * @param $result
      * @return array
      */
-    public function getColumn(string $name, $result) : array;
+    public function getColumn($name, $result);
 
     /**
      * @param $result
      * @return array
      */
-    public function getColumnNames($result) : array;
+    public function getColumnNames($result);
 
     /**
      * @param $result
@@ -128,17 +128,17 @@ interface DriverInterface
     /**
      * @return string|null
      */
-    public function getLastError() :? string;
+    public function getLastError();
 
     /**
      * @return string|null
      */
-    public function getLastErrorNo() :? string;
+    public function getLastErrorNo();
 
     /**
      * @param $result
      * @param int $position
      * @return bool
      */
-    public function dataSeek(&$result, $position) : bool;
+    public function dataSeek(&$result, $position);
 }

@@ -71,7 +71,7 @@ class Database implements Interfaces\DatabaseInterface
      * @param $data
      * @return $this
      */
-    public function setConfig($data) : self
+    public function setConfig($data)
     {
         $this->config = $data;
 
@@ -84,14 +84,14 @@ class Database implements Interfaces\DatabaseInterface
      */
     public function getConfig($key = null)
     {
-        return ($key === null ? $this->config : ($this->config[$key] ?? null));
+        return ($key === null ? $this->config : (isset($this->config[$key]) ? $this->config[$key] : null));
     }
 
     /**
      * @return Interfaces\DriverInterface
      * @throws Exceptions\Exception
      */
-    public function getDriver() : Interfaces\DriverInterface
+    public function getDriver()
     {
         return $this->driver;
     }
@@ -123,7 +123,7 @@ class Database implements Interfaces\DatabaseInterface
     /**
      * @return $this
      */
-    public function disconnect() : self
+    public function disconnect()
     {
         $this->getDriver()->disconnect();
 
@@ -244,7 +244,7 @@ class Database implements Interfaces\DatabaseInterface
      * @return mixed
      * @throws Exceptions\Exception
      */
-    public function update($values, string $table, $where = '')
+    public function update($values, $table, $where = '')
     {
         $table = $this->prepareFrom($table);
         $values = $this->prepareValuesSet($values);
@@ -269,11 +269,11 @@ class Database implements Interfaces\DatabaseInterface
      */
     public function insert(
         $fields,
-        string $table,
+        $table,
         $fromFields = '*',
-        string $fromTable = '',
+        $fromTable = '',
         $where = '',
-        string $limit = ''
+        $limit = ''
     ) {
         $table = $this->prepareFrom($table);
 
@@ -325,7 +325,7 @@ class Database implements Interfaces\DatabaseInterface
      * @return mixed
      * @throws Exceptions\Exception
      */
-    public function save($fields, string $table, $where = '')
+    public function save($fields, $table, $where = '')
     {
         if ($where === '') {
             $mode = 'insert';
@@ -346,7 +346,7 @@ class Database implements Interfaces\DatabaseInterface
      * @param $result
      * @return bool
      */
-    public function isResult($result) : bool
+    public function isResult($result)
     {
         return $this->getDriver()->isResult($result);
     }
@@ -355,7 +355,7 @@ class Database implements Interfaces\DatabaseInterface
      * @param $result
      * @return int
      */
-    public function numFields($result) : int
+    public function numFields($result)
     {
         return $this->getDriver()->numFields($result);
     }
@@ -365,7 +365,7 @@ class Database implements Interfaces\DatabaseInterface
      * @param int $col
      * @return string|null
      */
-    public function fieldName($result, $col = 0) :? string
+    public function fieldName($result, $col = 0)
     {
         return $this->getDriver()->fieldName($result, $col);
     }
@@ -377,7 +377,7 @@ class Database implements Interfaces\DatabaseInterface
      * @return bool
      * @throws Exceptions\Exception
      */
-    public function setCharset(string $charset, string $collation, $method = null) : bool
+    public function setCharset($charset, $collation, $method = null)
     {
         $tStart = microtime(true);
 
@@ -393,7 +393,7 @@ class Database implements Interfaces\DatabaseInterface
      * @return bool
      * @throws Exceptions\Exception
      */
-    public function selectDb(string $name) : bool
+    public function selectDb($name)
     {
         $tStart = microtime(true);
 
@@ -408,7 +408,7 @@ class Database implements Interfaces\DatabaseInterface
      * @param $result
      * @return int
      */
-    public function getRecordCount($result) : int
+    public function getRecordCount($result)
     {
         return $this->getDriver()->getRecordCount($result);
     }
@@ -434,7 +434,7 @@ class Database implements Interfaces\DatabaseInterface
      * @return array
      * @throws Exceptions\Exception
      */
-    public function getColumn(string $name, $result) : array
+    public function getColumn($name, $result)
     {
         if (\is_scalar($result)) {
             $result = $this->query($result);
@@ -448,7 +448,7 @@ class Database implements Interfaces\DatabaseInterface
      * @return array
      * @throws Exceptions\Exception
      */
-    public function getColumnNames($result) : array
+    public function getColumnNames($result)
     {
         if (\is_scalar($result)) {
             $result = $this->query($result);
@@ -477,7 +477,7 @@ class Database implements Interfaces\DatabaseInterface
      * @return array
      * @throws Exceptions\Exception
      */
-    public function getTableMetaData(string $table) : array
+    public function getTableMetaData($table)
     {
         $metadata = [];
         if (! empty($table)) {
@@ -495,7 +495,7 @@ class Database implements Interfaces\DatabaseInterface
      * @return array
      * @throws Exceptions\Exception
      */
-    public function makeArray($result, bool $index = false) : array
+    public function makeArray($result, $index = false)
     {
         $rsArray = [];
         $iterator = 0;
@@ -512,7 +512,7 @@ class Database implements Interfaces\DatabaseInterface
      * @return string
      * @throws Exceptions\Exception
      */
-    public function getVersion() : string
+    public function getVersion()
     {
         return $this->getDriver()->getVersion();
     }
@@ -522,7 +522,7 @@ class Database implements Interfaces\DatabaseInterface
      * @return mixed
      * @throws Exceptions\Exception
      */
-    public function optimize(string $table)
+    public function optimize($table)
     {
         $result = $this->query('OPTIMIZE TABLE ' . $table);
         if ($result !== false) {
@@ -537,7 +537,7 @@ class Database implements Interfaces\DatabaseInterface
      * @return mixed
      * @throws Exceptions\Exception
      */
-    public function alterTable(string $table)
+    public function alterTable($table)
     {
         $result = $this->query('ALTER TABLE ' . $table);
 
@@ -549,7 +549,7 @@ class Database implements Interfaces\DatabaseInterface
      * @return mixed
      * @throws Exceptions\Exception
      */
-    public function truncate(string $table)
+    public function truncate($table)
     {
         $result = $this->query('TRUNCATE ' . $table);
 
@@ -571,7 +571,7 @@ class Database implements Interfaces\DatabaseInterface
      * @return int
      * @throws Exceptions\Exception
      */
-    public function getAffectedRows() : int
+    public function getAffectedRows()
     {
         return $this->getDriver()->getAffectedRows();
     }

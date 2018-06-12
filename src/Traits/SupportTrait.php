@@ -16,7 +16,7 @@ trait SupportTrait
      * @return string
      * @throws Exceptions\Exception
      */
-    public function getTableName(string $table, bool $escape = true): string
+    public function getTableName($table, $escape = true)
     {
         if (empty($table)) {
             throw new Exceptions\TableNotDefinedException($table);
@@ -32,7 +32,7 @@ trait SupportTrait
      * @return string
      * @throws Exceptions\Exception
      */
-    public function getFullTableName(string $table): string
+    public function getFullTableName($table)
     {
         if (empty($table)) {
             throw new Exceptions\TableNotDefinedException($table);
@@ -70,7 +70,7 @@ trait SupportTrait
      * @return bool|false|string
      * @deprecated
      */
-    public function convertDate(int $timestamp, string $fieldType = 'DATETIME')
+    public function convertDate($timestamp, $fieldType = 'DATETIME')
     {
         $date = false;
         if (! empty($timestamp) && $timestamp > 0) {
@@ -99,7 +99,7 @@ trait SupportTrait
      * @param bool $ignoreAlias
      * @return string
      */
-    protected function prepareFields($data, $ignoreAlias = false): string
+    protected function prepareFields($data, $ignoreAlias = false)
     {
         if (\is_array($data)) {
             $tmp = [];
@@ -122,7 +122,7 @@ trait SupportTrait
      * @return string
      * @throws Exceptions\Exception
      */
-    protected function prepareNull($value): string
+    protected function prepareNull($value)
     {
         switch (true) {
             case ($value === null || (\is_scalar($value) && strtolower($value) === 'null')):
@@ -205,7 +205,7 @@ trait SupportTrait
      * @param bool $skipFieldNames
      * @return bool|string
      */
-    protected function checkFields($fields, $level = 1, bool $skipFieldNames = false)
+    protected function checkFields($fields, $level = 1, $skipFieldNames = false)
     {
         if (\is_array($fields) && $skipFieldNames === false) {
             if ($this->arrayOnlyNumeric($fields) === true) {
@@ -222,7 +222,7 @@ trait SupportTrait
      * @param array $data
      * @return bool
      */
-    protected function arrayOnlyNumeric(array $data) : bool
+    protected function arrayOnlyNumeric(array $data)
     {
         $onlyNumbers = true;
         foreach ($data as $value) {
@@ -240,7 +240,7 @@ trait SupportTrait
      * @return string
      * @throws Exceptions\Exception
      */
-    protected function prepareValuesSet($data): string
+    protected function prepareValuesSet($data)
     {
         if (\is_array($data)) {
             foreach ($data as $key => $value) {
@@ -262,7 +262,7 @@ trait SupportTrait
      * @return string
      * @throws Exceptions\Exception
      */
-    protected function prepareFrom($data, bool $hasArray = false): string
+    protected function prepareFrom($data, $hasArray = false)
     {
         if (\is_array($data) && $hasArray === true) {
             $tmp = [];
@@ -283,7 +283,7 @@ trait SupportTrait
      * @return string
      * @throws Exceptions\Exception
      */
-    protected function prepareWhere($data): string
+    protected function prepareWhere($data)
     {
         if (\is_array($data)) {
             if ($this->arrayOnlyNumeric(array_keys($data)) === true) {
@@ -305,7 +305,7 @@ trait SupportTrait
      * @param string $data
      * @return string
      */
-    protected function prepareOrder($data): string
+    protected function prepareOrder($data)
     {
         $data = trim($data);
         if (! empty($data) && stripos($data, 'ORDER') !== 0) {
@@ -319,7 +319,7 @@ trait SupportTrait
      * @param string $data
      * @return string
      */
-    protected function prepareLimit($data): string
+    protected function prepareLimit($data)
     {
         $data = trim($data);
         if (! empty($data) && stripos($data, 'LIMIT') !== 0) {

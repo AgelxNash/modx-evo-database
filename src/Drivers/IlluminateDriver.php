@@ -55,7 +55,7 @@ class IlluminateDriver implements DriverInterface
      * @return Connection
      * @throws Exceptions\Exception
      */
-    public function getConnect() : Connection
+    public function getConnect()
     {
         if (! $this->isConnected()) {
             return $this->connect();
@@ -68,7 +68,7 @@ class IlluminateDriver implements DriverInterface
      * @return
      * @throws Exceptions\Exception
      */
-    public function connect() : Connection
+    public function connect()
     {
         try {
             $this->capsule->addConnection([
@@ -93,7 +93,7 @@ class IlluminateDriver implements DriverInterface
     /**
      * {@inheritDoc}
      */
-    public function disconnect() : DriverInterface
+    public function disconnect()
     {
         if ($this->isConnected()) {
             $this->conn->disconnect();
@@ -107,7 +107,7 @@ class IlluminateDriver implements DriverInterface
     /**
      * @return bool
      */
-    public function isConnected() : bool
+    public function isConnected()
     {
         return ($this->conn instanceof Connection && $this->conn->getDatabaseName());
     }
@@ -141,7 +141,7 @@ class IlluminateDriver implements DriverInterface
      * @return int
      * @throws Exceptions\Exception
      */
-    public function getAffectedRows() : int
+    public function getAffectedRows()
     {
         return $this->affected_rows;
     }
@@ -150,7 +150,7 @@ class IlluminateDriver implements DriverInterface
      * @return string
      * @throws Exceptions\Exception
      */
-    public function getVersion() : string
+    public function getVersion()
     {
         return $this->getConnect()->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION);
         //return $this->getConnect()->server_info;
@@ -160,7 +160,7 @@ class IlluminateDriver implements DriverInterface
      * @param PDOStatement $result
      * @return int
      */
-    public function getRecordCount($result) : int
+    public function getRecordCount($result)
     {
         return $result->rowCount();
     }
@@ -168,7 +168,7 @@ class IlluminateDriver implements DriverInterface
     /**
      * {@inheritDoc}
      */
-    public function setCharset(string $charset, string $collation, $method = null) : bool
+    public function setCharset($charset, $collation, $method = null)
     {
         if ($method === null) {
             $method = $this->config['method'];
@@ -181,7 +181,7 @@ class IlluminateDriver implements DriverInterface
      * @param $result
      * @return bool
      */
-    public function isResult($result) : bool
+    public function isResult($result)
     {
         return $result instanceof PDOStatement;
     }
@@ -190,7 +190,7 @@ class IlluminateDriver implements DriverInterface
      * @param PDOStatement $result
      * @return int
      */
-    public function numFields($result) : int
+    public function numFields($result)
     {
         return $result->columnCount();
     }
@@ -200,10 +200,10 @@ class IlluminateDriver implements DriverInterface
      * @param int $col
      * @return string|null
      */
-    public function fieldName($result, $col = 0) :? string
+    public function fieldName($result, $col = 0)
     {
         $field = $result->getColumnMeta($col);
-        return $field['name'] ?? null;
+        return isset($field['name']) ? $field['name'] : null;
     }
 
     /**
@@ -211,7 +211,7 @@ class IlluminateDriver implements DriverInterface
      * @return bool
      * @throws Exceptions\Exception
      */
-    public function selectDb(string $name) : bool
+    public function selectDb($name)
     {
         $this->getConnect()->setDatabaseName($name);
 
@@ -253,7 +253,7 @@ class IlluminateDriver implements DriverInterface
      * @return mixed
      * @throws Exceptions\Exception
      */
-    public function query(string $query)
+    public function query($query)
     {
         $result = null;
         try {
@@ -273,7 +273,8 @@ class IlluminateDriver implements DriverInterface
             }
         } catch (\Exception $exception) {
             $this->lastError = $this->isResult($result) ? $result->errorInfo() : [];
-            $this->lastErrorNo = $this->isResult($result) ? ($result->errorCode() ?? $exception->getCode()) : '';
+            $code = $this->isResult($result) ? $result->errorCode() : '';
+            $this->lastErrorNo = $this->isResult($result) ? (empty($code) ? $exception->getCode() : $code) : '';
             throw (new Exceptions\QueryException($exception->getMessage(), $exception->getCode()))
                 ->setQuery($query);
         }
@@ -287,7 +288,7 @@ class IlluminateDriver implements DriverInterface
      * @return array
      * @throws Exceptions\Exception
      */
-    public function getColumn(string $name, $result) : array
+    public function getColumn($name, $result)
     {
         $col = [];
 
@@ -304,7 +305,7 @@ class IlluminateDriver implements DriverInterface
      * @param $result
      * @return array
      */
-    public function getColumnNames($result) : array
+    public function getColumnNames($result)
     {
         $names = [];
 
@@ -329,7 +330,7 @@ class IlluminateDriver implements DriverInterface
 
         if ($result instanceof PDOStatement) {
             $result = $this->getRow($result, 'num');
-            $out = $result[0] ?? false;
+            $out = isset($result[0]) ? $result[0] : false;
         }
 
         return $out;
@@ -358,25 +359,29 @@ class IlluminateDriver implements DriverInterface
      * @return string|null
      * @throws Exceptions\Exception
      */
-    public function getLastError() :? string
+    public function getLastError()
     {
-        return (string)($this->getConnect()->getPdo()->errorInfo()[2] ?? $this->lastError[2]);
+        $pdo = $this->getConnect()->getPdo();
+        $error = $pdo->errorInfo();
+        return (string)(isset($error[2]) ? $error[2] : $this->lastError[2]);
     }
 
     /**
      * @return string|null
      * @throws Exceptions\Exception
      */
-    public function getLastErrorNo() :? string
+    public function getLastErrorNo()
     {
-        return (string)($this->getConnect()->getPdo()->errorInfo()[1] ?? $this->lastErrorNo);
+        $pdo = $this->getConnect()->getPdo();
+        $error = $pdo->errorInfo();
+        return (string)(isset($error[1]) ? $error[1] : $this->lastErrorNo);
     }
 
     /**
      * {@inheritDoc}
      * @param \PDOStatement $result
      */
-    public function dataSeek(&$result, $position) : bool
+    public function dataSeek(&$result, $position)
     {
         throw new Exceptions\DriverException('No implemented');
     }

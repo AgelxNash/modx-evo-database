@@ -2,7 +2,6 @@
 
 use PHPUnit\Framework\TestCase;
 use AgelxNash\Modx\Evo\Database;
-use Illuminate\Database\Capsule\Manager as Capsule;
 
 class LegacyDatabaseTest extends TestCase
 {

@@ -13,7 +13,7 @@ class IlluminateQueryTest extends RealQueryTest
 
     protected function setUp()
     {
-        if (!class_exists('\Illuminate\Database\Connection')) {
+        if (!class_exists(Illuminate\Database\Connection::class)) {
             $this->markTestSkipped(
                 'The Illuminate\Database\Connection class is not available.'
             );
@@ -21,8 +21,6 @@ class IlluminateQueryTest extends RealQueryTest
 
         parent::setUp();
     }
-
-
 
     public function testGetRow()
     {

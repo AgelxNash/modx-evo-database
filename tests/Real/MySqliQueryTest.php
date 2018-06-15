@@ -14,7 +14,7 @@ class MySqliQuery extends RealQueryTest
 
     protected function setUp()
     {
-        if (!class_exists('mysqli')) {
+        if (!class_exists(mysqli::class)) {
             $this->markTestSkipped(
                 'The mysqli class is not available.'
             );

@@ -10,28 +10,28 @@ class SupportTraitTest extends TestCase
 
     public function setUp()
     {
-        $this->instance = new Database\Database();
+        $this->instance = new Database\LegacyDatabase();
     }
 
     public function testGetTableName()
     {
         $this->assertSame(
             '`site_content`',
-            (new Database\Database('agel-nash.ru', 'modx'))
+            (new Database\LegacyDatabase('agel-nash.ru', 'modx'))
                 ->getTableName('site_content'),
             'STEP 1/4'
         );
 
         $this->assertSame(
             '`modx_site_content`',
-            (new Database\Database('agel-nash.ru', 'modx', 'agel_nash', '', 'modx_'))
+            (new Database\LegacyDatabase('agel-nash.ru', 'modx', 'agel_nash', '', 'modx_'))
                 ->getTableName('site_content'),
             'STEP 2/4'
         );
 
         $this->assertSame(
             'modx_site_content',
-            (new Database\Database('agel-nash.ru', 'modx', 'agel_nash', '', 'modx_'))
+            (new Database\LegacyDatabase('agel-nash.ru', 'modx', 'agel_nash', '', 'modx_'))
                 ->getTableName('site_content', false),
             'STEP 3/4'
         );
@@ -48,14 +48,14 @@ class SupportTraitTest extends TestCase
     {
         $this->assertSame(
             '`modx`.`site_content`',
-            (new Database\Database('agel-nash.ru', 'modx'))
+            (new Database\LegacyDatabase('agel-nash.ru', 'modx'))
                 ->getFullTableName('site_content'),
             'STEP 1/3'
         );
 
         $this->assertSame(
             '`modx`.`modx_site_content`',
-            (new Database\Database('agel-nash.ru', 'modx', 'agel_nash', '', 'modx_'))
+            (new Database\LegacyDatabase('agel-nash.ru', 'modx', 'agel_nash', '', 'modx_'))
                 ->getFullTableName('site_content'),
             'STEP 2/3'
         );

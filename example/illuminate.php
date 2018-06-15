@@ -2,7 +2,7 @@
 include_once dirname(__DIR__) . '/vendor/autoload.php';
 
 try {
-    $DB = new AgelxNash\Modx\Evo\Database\Database(
+    $DB = new AgelxNash\Modx\Evo\Database\LegacyDatabase(
         'localhost',
         'modx',
         'homestead',

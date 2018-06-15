@@ -21,52 +21,38 @@ class Database implements Interfaces\DatabaseInterface
     protected $safeLoopCount = 1000;
 
     /**
-     * @param string $host
-     * @param string $base
-     * @param string $user
-     * @param string $pass
-     * @param string $prefix
-     * @param string $charset
-     * @param string $method
-     * @param string $collation
+     * @param array $config
      * @param string $driver
      * @throws Exceptions\Exception
      */
-    public function __construct(
-        $host = '',
-        $base = '',
-        $user = '',
-        $pass = '',
-        $prefix = '',
-        $charset = 'utf8mb4',
-        $method = 'SET CHARACTER SET',
-        $collation = 'utf8mb4_unicode_ci',
-        $driver = Drivers\MySqliDriver::class
-    ) {
-        $base = trim($base, '`');
+    public function __construct(array $config, $driver = Drivers\MySqliDriver::class)
+    {
+        $this->setConfig($config);
+        $this->setDriver($driver);
+    }
 
-        $this->setConfig(compact(
-            'host',
-            'base',
-            'user',
-            'pass',
-            'prefix',
-            'charset',
-            'method',
-            'collation'
-        ));
-
+    /**
+     * @param string|Interfaces\DriverInterface $driver
+     * @return Interfaces\DriverInterface
+     * @throws Exceptions\Exception
+     */
+    public function setDriver($driver)
+    {
         if (! \in_array(Interfaces\DriverInterface::class, class_implements($driver), true)) {
             throw new Exceptions\DriverException(
                 $driver . ' should implements the ' . Interfaces\DriverInterface::class
             );
         }
 
-        $this->driver = new $driver(
-            $this->getConfig()
-        );
-    }
+        if (is_scalar($driver)) {
+            $this->driver = new $driver($this->getConfig());
+        } else {
+            $this->driver = $driver;
+            $this->config = array_merge($this->config, $driver->getConfig());
+        }
 
+        return $this->driver;
+    }
     /**
      * @param $data
      * @return $this
@@ -104,13 +90,12 @@ class Database implements Interfaces\DatabaseInterface
     {
         $tStart = microtime(true);
 
-        $out = $this->getDriver()->connect();
+        $out = $this->getDriver()->getConnect();
 
         $totalTime = microtime(true) - $tStart;
         if ($this->isDebug()) {
             $this->connectionTime = $totalTime;
         }
-
         $this->setCharset(
             $this->getConfig('charset'),
             $this->getConfig('collation'),

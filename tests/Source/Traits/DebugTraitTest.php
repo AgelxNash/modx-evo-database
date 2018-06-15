@@ -9,7 +9,7 @@ class DebugTraitTest extends TestCase
 
     public function setUp()
     {
-        $this->instance = new Database\Database();
+        $this->instance = new Database\LegacyDatabase();
     }
 
 

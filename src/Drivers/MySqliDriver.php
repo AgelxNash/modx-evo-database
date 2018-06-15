@@ -32,6 +32,14 @@ class MySqliDriver implements DriverInterface
     }
 
     /**
+     * @return array
+     */
+    public function getConfig()
+    {
+        return $this->config;
+    }
+
+    /**
      * @return mixed
      * @throws Exceptions\Exception
      */
@@ -53,9 +61,9 @@ class MySqliDriver implements DriverInterface
         try {
             $this->conn = new mysqli(
                 $this->config['host'],
-                $this->config['user'],
-                $this->config['pass'],
-                $this->config['base']
+                $this->config['username'],
+                $this->config['password'],
+                $this->config['database']
             );
 
             if ($this->isConnected() && $this->getConnect()->connect_error) {

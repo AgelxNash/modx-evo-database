@@ -25,7 +25,7 @@ abstract class RealQueryTest extends TestCase
 
     protected function setUp()
     {
-        $this->instance = new Database\Database(
+        $this->instance = new Database\LegacyDatabase(
             isset($_SERVER['DB_HOST']) ? $_SERVER['DB_HOST'] : 'localhost',
             isset($_SERVER['DB_BASE']) ? $_SERVER['DB_BASE'] : 'modx',
             isset($_SERVER['DB_USER']) ? $_SERVER['DB_USER'] : 'homestead',

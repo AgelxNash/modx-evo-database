@@ -9,6 +9,7 @@ use Illuminate\Events\Dispatcher;
 use Illuminate\Contracts\Events\Dispatcher as DispatcherContract;
 use Illuminate\Container\Container;
 use ReflectionClass;
+use PDO;
 
 class IlluminateDriver implements DriverInterface
 {
@@ -18,11 +19,16 @@ class IlluminateDriver implements DriverInterface
     protected $conn;
 
     /**
+     * @var string
+     */
+    protected $connection = 'default';
+
+    /**
      * @var Capsule
      */
     protected $capsule;
 
-    private $affected_rows = 0;
+    private $affectedRows = 0;
 
     /**
      * @var array
@@ -44,7 +50,7 @@ class IlluminateDriver implements DriverInterface
     /**
      * {@inheritDoc}
      */
-    public function __construct(array $config = [])
+    public function __construct(array $config = [], $connection = 'default', $unique = true)
     {
         $reflection = new ReflectionClass(Capsule::class);
         $property = $reflection->getProperty('instance');
@@ -53,18 +59,35 @@ class IlluminateDriver implements DriverInterface
          * @var Capsule|null $capsule
          */
         $capsule = $property->getValue(Capsule::class);
-
         if ($capsule === null) {
             $this->capsule = new Capsule;
 
             $this->getCapsule()->setAsGlobal();
+        } else {
+            $this->capsule = $capsule;
         }
+
+        if ($this->hasConnectionName($connection)) {
+            $diff = array_diff_assoc(
+                $config,
+                $this->getCapsule()->getConnection($connection)->getConfig()
+            );
+            if (array_intersect(array('driver', 'host', 'database', 'password', 'username'), array_keys($diff))) {
+                throw new Exceptions\ConnectException(
+                    sprintf('The connection name "%s" is already used', $connection)
+                );
+            }
+        }
+
+        $this->connection = $connection;
 
         $this->useEloquent();
 
-        $this->config = $config;
+        $this->config = array_merge(
+            array('driver' => $this->driver),
+            $config
+        );
     }
-
 
     /**
      * @param DispatcherContract|null $dispatcher
@@ -73,6 +96,10 @@ class IlluminateDriver implements DriverInterface
     public function useEloquent(DispatcherContract $dispatcher = null)
     {
         $out = false;
+        if ($dispatcher === null) {
+            $dispatcher = $this->getCapsule()->getEventDispatcher();
+        }
+
         if ($dispatcher === null && class_exists(Dispatcher::class)) {
             $dispatcher = new Dispatcher(new Container);
         }
@@ -86,6 +113,14 @@ class IlluminateDriver implements DriverInterface
         $this->getCapsule()->bootEloquent();
 
         return $out;
+    }
+
+    /**
+     * @return array
+     */
+    public function getConfig()
+    {
+        return $this->config;
     }
 
     /**
@@ -103,32 +138,48 @@ class IlluminateDriver implements DriverInterface
     public function getConnect()
     {
         if (! $this->isConnected()) {
-            return $this->connect();
+            $this->connect();
+            if (! $this->conn->getPdo() instanceof PDO) {
+                $this->conn->reconnect();
+            }
         }
 
         return $this->conn;
     }
 
     /**
-     * @return
+     * @param $name
+     * @return bool
+     */
+    public function hasConnectionName($name)
+    {
+        $connections = $this->getCapsule()->getDatabaseManager()->getConnections();
+        return isset($connections[$name]);
+    }
+
+    /**
+     * @return Connection
      * @throws Exceptions\Exception
      */
     public function connect()
     {
         try {
-            $this->getCapsule()->addConnection([
-                'driver'    => $this->driver,
-                'host'      => $this->config['host'],
-                'database'  => $this->config['base'],
-                'username'  => $this->config['user'],
-                'password'  => $this->config['pass'],
-                'charset'   => $this->config['charset'],
-                'collation' => $this->config['collation'],
-                'prefix'    => $this->config['prefix'],
-            ]);
+            if (! $this->hasConnectionName($this->connection)) {
+                $this->getCapsule()->addConnection([
+                    'driver'    => $this->config['driver'],
+                    'host'      => $this->config['host'],
+                    'database'  => $this->config['database'],
+                    'username'  => $this->config['username'],
+                    'password'  => $this->config['password'],
+                    'charset'   => $this->config['charset'],
+                    'collation' => $this->config['collation'],
+                    'prefix'    => $this->config['prefix'],
+                ], $this->connection);
+            }
 
-            $this->conn = $this->getCapsule()->getConnection();
+            $this->conn = $this->getCapsule()->getConnection($this->connection);
         } catch (\Exception $exception) {
+            $this->conn = null;
             throw new Exceptions\ConnectException($exception->getMessage(), $exception->getCode());
         }
 
@@ -188,7 +239,7 @@ class IlluminateDriver implements DriverInterface
      */
     public function getAffectedRows()
     {
-        return $this->affected_rows;
+        return $this->affectedRows;
     }
 
     /**
@@ -218,8 +269,9 @@ class IlluminateDriver implements DriverInterface
         if ($method === null) {
             $method = $this->config['method'];
         }
+        $query = $method . ' ' . $charset . ' COLLATE ' . $collation;
 
-        return (bool)$this->query($method . ' ' . $charset . ' COLLATE ' . $collation);
+        return (bool)$this->query($query);
     }
 
     /**
@@ -312,8 +364,8 @@ class IlluminateDriver implements DriverInterface
             if ($result->execute() === false) {
                 $result = false;
             }
-            $this->affected_rows = \is_bool($result) ? 0 : $result->rowCount();
-            if ($this->affected_rows === 0 && $this->isResult($result) && 0 !== mb_stripos(trim($query), 'SELECT')) {
+            $this->affectedRows = \is_bool($result) ? 0 : $result->rowCount();
+            if ($this->affectedRows === 0 && $this->isResult($result) && 0 !== mb_stripos(trim($query), 'SELECT')) {
                 $result = true;
             }
         } catch (\Exception $exception) {

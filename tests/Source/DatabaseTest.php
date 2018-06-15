@@ -12,13 +12,13 @@ class DatabaseTest extends TestCase
 
     protected function setUp()
     {
-        $this->instance = new Database\Database();
+        $this->instance = new Database\LegacyDatabase();
     }
 
     public function testDriver()
     {
         try {
-            new Database\Database(
+            new Database\LegacyDatabase(
                 '',
                 '',
                 '',
@@ -61,51 +61,51 @@ class DatabaseTest extends TestCase
         $this->assertSame(
             [
                 'host' => '',
-                'base' => '',
-                'user' => '',
-                'pass' => '',
+                'database' => '',
+                'username' => '',
+                'password' => '',
                 'prefix' => '',
                 'charset' => 'utf8mb4',
                 'method' => 'SET CHARACTER SET',
                 'collation' => 'utf8mb4_unicode_ci'
             ],
-            (new Database\Database())->getConfig(),
+            (new Database\LegacyDatabase())->getConfig(),
             'STEP 1/6'
         );
 
         $this->assertSame(
             'agel-nash.ru',
-            (new Database\Database('agel-nash.ru'))->getConfig('host'),
+            (new Database\LegacyDatabase('agel-nash.ru'))->getConfig('host'),
             'STEP 2/6'
         );
 
         $this->assertEquals(
             null,
-            (new Database\Database())->getConfig('password'),
+            (new Database\LegacyDatabase())->getConfig('password'),
             'STEP 3/6'
         );
 
         $this->assertSame(
             '',
-            (new Database\Database())->getConfig('pass'),
+            (new Database\LegacyDatabase())->getConfig('password'),
             'STEP 4/6'
         );
 
         $this->assertSame(
-            'utf8mb4',
-            (new Database\Database())->getConfig('charset'),
+            '',
+            (new Database\LegacyDatabase())->getConfig('database'),
             'STEP 5/6'
         );
 
         $this->assertSame(
             'utf8mb4',
-            (new Database\Database())->getConfig('charset'),
+            (new Database\LegacyDatabase())->getConfig('charset'),
             'STEP 5/6'
         );
 
         $this->assertSame(
             'utf8mb4_unicode_ci',
-            (new Database\Database())->getConfig('collation'),
+            (new Database\LegacyDatabase())->getConfig('collation'),
             'STEP 6/6'
         );
     }

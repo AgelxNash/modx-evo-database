@@ -39,7 +39,7 @@ trait SupportTrait
         }
 
         return implode('.', [
-            '`' . $this->getConfig('base') . '`',
+            '`' . $this->getConfig('database') . '`',
             $this->getTableName($table)
         ]);
     }

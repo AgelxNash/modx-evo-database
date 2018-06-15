@@ -43,4 +43,37 @@ class LegacyDatabase extends AbstractDatabase
 
         $this->setDriver($driver);
     }
+
+    /**
+     * @param $tableName
+     * @param bool $force
+     * @return null|string|string[]
+     * @throws Exceptions\Exception
+     */
+    public function replaceFullTableName($tableName, $force = false)
+    {
+        $tableName = trim($tableName);
+        if ((bool)$force === true) {
+            $result = $this->getFullTableName($tableName);
+        } elseif (strpos($tableName, '[+prefix+]') !== false) {
+            $dbase = trim($this->getConfig('database'), '`');
+            $prefix = $this->getConfig('prefix');
+
+            $result = preg_replace('@\[\+prefix\+\]([0-9a-zA-Z_]+)@', "`{$dbase}`.`{$prefix}$1`", $tableName);
+        } else {
+            $result = $tableName;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param mixed $sql
+     * @return mixed
+     * @throws Exceptions\Exception
+     */
+    public function query($sql)
+    {
+        return parent::query($this->replaceFullTableName($sql));
+    }
 }

@@ -5,6 +5,10 @@ use AgelxNash\Modx\Evo\Database\Exceptions;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Illuminate\Database\Connection;
 use PDOStatement;
+use Illuminate\Events\Dispatcher;
+use Illuminate\Contracts\Events\Dispatcher as DispatcherContract;
+use Illuminate\Container\Container;
+use ReflectionClass;
 
 class IlluminateDriver implements DriverInterface
 {
@@ -42,13 +46,54 @@ class IlluminateDriver implements DriverInterface
      */
     public function __construct(array $config = [])
     {
-        $this->capsule = new Capsule;
+        $reflection = new ReflectionClass(Capsule::class);
+        $property = $reflection->getProperty('instance');
+        $property->setAccessible(true);
+        /**
+         * @var Capsule|null $capsule
+         */
+        $capsule = $property->getValue(Capsule::class);
 
-        $this->capsule->setAsGlobal();
+        if ($capsule === null) {
+            $this->capsule = new Capsule;
 
-        $this->capsule->bootEloquent();
+            $this->getCapsule()->setAsGlobal();
+        }
+
+        $this->useEloquent();
 
         $this->config = $config;
+    }
+
+
+    /**
+     * @param DispatcherContract|null $dispatcher
+     * @return bool
+     */
+    public function useEloquent(DispatcherContract $dispatcher = null)
+    {
+        $out = false;
+        if ($dispatcher === null && class_exists(Dispatcher::class)) {
+            $dispatcher = new Dispatcher(new Container);
+        }
+
+        if ($dispatcher !== null) {
+            $this->getCapsule()->setEventDispatcher($dispatcher);
+
+            $out = true;
+        }
+
+        $this->getCapsule()->bootEloquent();
+
+        return $out;
+    }
+
+    /**
+     * @return Capsule
+     */
+    public function getCapsule()
+    {
+        return $this->capsule;
     }
 
     /**
@@ -71,7 +116,7 @@ class IlluminateDriver implements DriverInterface
     public function connect()
     {
         try {
-            $this->capsule->addConnection([
+            $this->getCapsule()->addConnection([
                 'driver'    => $this->driver,
                 'host'      => $this->config['host'],
                 'database'  => $this->config['base'],
@@ -82,7 +127,7 @@ class IlluminateDriver implements DriverInterface
                 'prefix'    => $this->config['prefix'],
             ]);
 
-            $this->conn = $this->capsule->getConnection();
+            $this->conn = $this->getCapsule()->getConnection();
         } catch (\Exception $exception) {
             throw new Exceptions\ConnectException($exception->getMessage(), $exception->getCode());
         }

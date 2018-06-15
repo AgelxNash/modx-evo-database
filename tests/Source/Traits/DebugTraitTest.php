@@ -9,7 +9,7 @@ class DebugTraitTest extends TestCase
 
     public function setUp()
     {
-        $this->instance = new Database\LegacyDatabase();
+        $this->instance = new Database\Database([]);
     }
 
 
@@ -61,7 +61,7 @@ class DebugTraitTest extends TestCase
     public function testErrorList()
     {
         $this->assertInstanceOf(
-            Database\Database::class,
+            Database\Interfaces\DatabaseInterface::class,
             $this->instance->flushIgnoreErrors()
         );
 
@@ -71,7 +71,7 @@ class DebugTraitTest extends TestCase
         );
 
         $this->assertInstanceOf(
-            Database\Database::class,
+            Database\Interfaces\DatabaseInterface::class,
             $this->instance->addIgnoreErrors(1000)
         );
 
@@ -81,7 +81,7 @@ class DebugTraitTest extends TestCase
         );
 
         $this->assertInstanceOf(
-            Database\Database::class,
+            Database\Interfaces\DatabaseInterface::class,
             $this->instance->setIgnoreErrors([10, '20'])
         );
 

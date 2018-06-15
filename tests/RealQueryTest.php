@@ -25,17 +25,16 @@ abstract class RealQueryTest extends TestCase
 
     protected function setUp()
     {
-        $this->instance = new Database\LegacyDatabase(
-            isset($_SERVER['DB_HOST']) ? $_SERVER['DB_HOST'] : 'localhost',
-            isset($_SERVER['DB_BASE']) ? $_SERVER['DB_BASE'] : 'modx',
-            isset($_SERVER['DB_USER']) ? $_SERVER['DB_USER'] : 'homestead',
-            isset($_SERVER['DB_PASSWORD']) ? $_SERVER['DB_PASSWORD'] : 'secret',
-            isset($_SERVER['DB_PREFIX']) ? $_SERVER['DB_PREFIX'] : '{PREFIX}',
-            isset($_SERVER['DB_CHARSET']) ? $_SERVER['DB_CHARSET'] : 'utf8mb4',
-            isset($_SERVER['DB_METHOD']) ? $_SERVER['DB_METHOD'] : 'SET NAMES',
-            isset($_SERVER['DB_COLLATION']) ? $_SERVER['DB_COLLATION'] : 'utf8mb4_unicode_ci',
-            $this->driver
-        );
+        $this->instance = new Database\Database([
+            'host' => isset($_SERVER['DB_HOST']) ? $_SERVER['DB_HOST'] : 'localhost',
+            'database' => isset($_SERVER['DB_BASE']) ? $_SERVER['DB_BASE'] : 'modx',
+            'username' => isset($_SERVER['DB_USER']) ? $_SERVER['DB_USER'] : 'homestead',
+            'password' => isset($_SERVER['DB_PASSWORD']) ? $_SERVER['DB_PASSWORD'] : 'secret',
+            'prefix' => isset($_SERVER['DB_PREFIX']) ? $_SERVER['DB_PREFIX'] : '{PREFIX}',
+            'charset' => isset($_SERVER['DB_CHARSET']) ? $_SERVER['DB_CHARSET'] : 'utf8mb4',
+            'method' => isset($_SERVER['DB_METHOD']) ? $_SERVER['DB_METHOD'] : 'SET NAMES',
+            'collation' => isset($_SERVER['DB_COLLATION']) ? $_SERVER['DB_COLLATION'] : 'utf8mb4_unicode_ci',
+        ], $this->driver);
 
         $this->instance->setDebug(true)->connect();
 

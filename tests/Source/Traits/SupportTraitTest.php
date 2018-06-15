@@ -10,10 +10,10 @@ class SupportTraitTest extends TestCase
 
     public function setUp()
     {
-        $this->instance = new Database\LegacyDatabase();
+        $this->instance = new Database\Database([]);
     }
 
-    public function testGetTableName()
+    public function testLegacyDatabaseGetTableName()
     {
         $this->assertSame(
             '`site_content`',
@@ -37,7 +37,38 @@ class SupportTraitTest extends TestCase
         );
 
         try {
-            $this->instance->getTableName('');
+            (new Database\LegacyDatabase())->getTableName('');
+            $this->assertTrue(false, 'Need TableNotDefinedException');
+        } catch (Database\Exceptions\TableNotDefinedException $exception) {
+            $this->assertTrue(true);
+        }
+    }
+
+    public function testDatabaseGetTableName()
+    {
+        $this->assertSame(
+            '`site_content`',
+            (new Database\Database([]))
+                ->getTableName('site_content'),
+            'STEP 1/4'
+        );
+
+        $this->assertSame(
+            '`modx_site_content`',
+            (new Database\Database(['prefix' => 'modx_']))
+                ->getTableName('site_content'),
+            'STEP 2/4'
+        );
+
+        $this->assertSame(
+            'modx_site_content',
+            (new Database\Database(['prefix' => 'modx_']))
+                ->getTableName('site_content', false),
+            'STEP 3/4'
+        );
+
+        try {
+            (new Database\Database([]))->getTableName('');
             $this->assertTrue(false, 'Need TableNotDefinedException');
         } catch (Database\Exceptions\TableNotDefinedException $exception) {
             $this->assertTrue(true);

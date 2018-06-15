@@ -12,23 +12,13 @@ class DatabaseTest extends TestCase
 
     protected function setUp()
     {
-        $this->instance = new Database\LegacyDatabase();
+        $this->instance = new Database\Database([]);
     }
 
     public function testDriver()
     {
         try {
-            new Database\LegacyDatabase(
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                \stdClass::class
-            );
+            new Database\Database([], \stdClass::class);
             $this->assertTrue(false, 'Need DriverException');
         } catch (Database\Exceptions\DriverException $exception) {
             $this->assertInstanceOf(
@@ -41,7 +31,9 @@ class DatabaseTest extends TestCase
     public function testConnection()
     {
         try {
-            $this->instance->connect();
+            (new Database\Database(
+                ['host' => 'agel-nash.ru', 'username' => 'homestead', 'password' => 'secret', 'database' => 'modx'])
+            )->connect();
             $this->assertTrue(false, 'Need ConnectException');
         } catch (Database\Exceptions\ConnectException $exception) {
             $this->assertInstanceOf(
@@ -58,55 +50,63 @@ class DatabaseTest extends TestCase
 
     public function testConfig()
     {
+        $config = [
+            'host' => '',
+            'database' => '',
+            'username' => '',
+            'password' => '',
+            'prefix' => '',
+            'charset' => 'utf8mb4',
+            'method' => 'SET CHARACTER SET',
+            'collation' => 'utf8mb4_unicode_ci'
+        ];
+
         $this->assertSame(
-            [
-                'host' => '',
-                'database' => '',
-                'username' => '',
-                'password' => '',
-                'prefix' => '',
-                'charset' => 'utf8mb4',
-                'method' => 'SET CHARACTER SET',
-                'collation' => 'utf8mb4_unicode_ci'
-            ],
+            $config,
             (new Database\LegacyDatabase())->getConfig(),
-            'STEP 1/6'
+            'STEP 1/8'
+        );
+
+        $this->assertSame(
+            $config,
+            (new Database\Database($config))->getConfig(),
+            'STEP 2/8'
         );
 
         $this->assertSame(
             'agel-nash.ru',
-            (new Database\LegacyDatabase('agel-nash.ru'))->getConfig('host'),
-            'STEP 2/6'
+            (new Database\Database(['host' => 'agel-nash.ru']))->getConfig('host'),
+            'STEP 3/8'
         );
 
         $this->assertEquals(
             null,
-            (new Database\LegacyDatabase())->getConfig('password'),
-            'STEP 3/6'
+            (new Database\Database([]))->getConfig('password'),
+            'STEP 4/8'
         );
 
         $this->assertSame(
-            '',
-            (new Database\LegacyDatabase())->getConfig('password'),
-            'STEP 4/6'
+            'secret',
+            (new Database\Database(['password' => 'secret']))->getConfig('password'),
+            'STEP 5/8'
         );
 
         $this->assertSame(
-            '',
-            (new Database\LegacyDatabase())->getConfig('database'),
-            'STEP 5/6'
+            'modx',
+            (new Database\Database(['database' => 'modx']))->getConfig('database'),
+            'STEP 6/8'
         );
 
         $this->assertSame(
             'utf8mb4',
-            (new Database\LegacyDatabase())->getConfig('charset'),
-            'STEP 5/6'
+            (new Database\Database(['charset' => 'utf8mb4']))->getConfig('charset'),
+            'STEP 7/8'
         );
 
         $this->assertSame(
             'utf8mb4_unicode_ci',
-            (new Database\LegacyDatabase())->getConfig('collation'),
-            'STEP 6/6'
+            (new Database\Database(['collation' => 'utf8mb4_unicode_ci']))->getConfig('collation'),
+            'STEP 8/8'
         );
     }
 }

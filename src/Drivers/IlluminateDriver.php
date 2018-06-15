@@ -50,7 +50,7 @@ class IlluminateDriver implements DriverInterface
     /**
      * {@inheritDoc}
      */
-    public function __construct(array $config = [], $connection = 'default', $unique = true)
+    public function __construct(array $config = [], $connection = 'default')
     {
         $reflection = new ReflectionClass(Capsule::class);
         $property = $reflection->getProperty('instance');
@@ -68,14 +68,19 @@ class IlluminateDriver implements DriverInterface
         }
 
         if ($this->hasConnectionName($connection)) {
-            $diff = array_diff_assoc(
-                $config,
-                $this->getCapsule()->getConnection($connection)->getConfig()
-            );
-            if (array_intersect(array('driver', 'host', 'database', 'password', 'username'), array_keys($diff))) {
-                throw new Exceptions\ConnectException(
-                    sprintf('The connection name "%s" is already used', $connection)
+            if (empty($config)) {
+                $config = $this->getCapsule()->getConnection($connection)->getConfig();
+                unset($config['name'], $config['driver']);
+            } else {
+                $diff = array_diff_assoc(
+                    array_merge(['driver' => $this->driver], $config),
+                    $this->getCapsule()->getConnection($connection)->getConfig()
                 );
+                if (array_intersect(['driver', 'host', 'database', 'password', 'username'], array_keys($diff))) {
+                    throw new Exceptions\ConnectException(
+                        sprintf('The connection name "%s" is already used', $connection)
+                    );
+                }
             }
         }
 
@@ -83,10 +88,7 @@ class IlluminateDriver implements DriverInterface
 
         $this->useEloquent();
 
-        $this->config = array_merge(
-            array('driver' => $this->driver),
-            $config
-        );
+        $this->config = $config;
     }
 
     /**
@@ -166,7 +168,7 @@ class IlluminateDriver implements DriverInterface
         try {
             if (! $this->hasConnectionName($this->connection)) {
                 $this->getCapsule()->addConnection([
-                    'driver'    => $this->config['driver'],
+                    'driver'    => $this->driver,
                     'host'      => $this->config['host'],
                     'database'  => $this->config['database'],
                     'username'  => $this->config['username'],

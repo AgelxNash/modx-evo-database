@@ -3,7 +3,7 @@
 /**
  * @deprecated
  */
-class LegacyDatabase extends Database
+class LegacyDatabase extends AbstractDatabase
 {
     /**
      * @param string $host

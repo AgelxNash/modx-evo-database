@@ -1,6 +1,5 @@
 <?php namespace AgelxNash\Modx\Evo\Database\Drivers;
 
-use AgelxNash\Modx\Evo\Database\Interfaces\DriverInterface;
 use AgelxNash\Modx\Evo\Database\Exceptions;
 use mysqli;
 use mysqli_result;
@@ -8,18 +7,11 @@ use mysqli_sql_exception;
 use mysqli_driver;
 use ReflectionClass;
 
-class MySqliDriver implements DriverInterface
+/**
+ * @property mysqli $conn
+ */
+class MySqliDriver extends AbstractDriver
 {
-    /**
-     * @var mysqli
-     */
-    protected $conn;
-
-    /**
-     * @var array
-     */
-    protected $config;
-
     /**
      * {@inheritDoc}
      */
@@ -29,14 +21,6 @@ class MySqliDriver implements DriverInterface
         $driver->report_mode = MYSQLI_REPORT_STRICT | MYSQLI_REPORT_ERROR;
 
         $this->config = $config;
-    }
-
-    /**
-     * @return array
-     */
-    public function getConfig()
-    {
-        return $this->config;
     }
 
     /**
@@ -255,81 +239,6 @@ class MySqliDriver implements DriverInterface
     }
 
     /**
-     * @param string $name
-     * @param $result
-     * @return array
-     * @throws Exceptions\Exception
-     */
-    public function getColumn($name, $result)
-    {
-        $col = [];
-
-        if ($this->isResult($result)) {
-            while ($row = $this->getRow($result)) {
-                if (array_key_exists($name, $row)) {
-                    $col[] = $row[$name];
-                }
-            }
-        }
-
-        return $col;
-    }
-
-    /**
-     * @param $result
-     * @return array
-     */
-    public function getColumnNames($result)
-    {
-        $names = [];
-
-        if ($this->isResult($result)) {
-            $limit = $this->numFields($result);
-            for ($i = 0; $i < $limit; $i++) {
-                $names[] = $this->fieldName($result, $i);
-            }
-        }
-
-        return $names;
-    }
-
-    /**
-     * @param $result
-     * @return bool|mixed
-     * @throws Exceptions\Exception
-     */
-    public function getValue($result)
-    {
-        $out = false;
-
-        if ($this->isResult($result)) {
-            $result = $this->getRow($result, 'num');
-            $out = isset($result[0]) ? $result[0] : false;
-        }
-
-        return $out;
-    }
-
-    /**
-     * @param $result
-     * @return array|mixed
-     * @throws Exceptions\Exception
-     */
-    public function getTableMetaData($result)
-    {
-        $out = [];
-
-        if ($this->isResult($result)) {
-            while ($row = $this->getRow($result)) {
-                $fieldName = $row['Field'];
-                $out[$fieldName] = $row;
-            }
-        }
-
-        return $out;
-    }
-
-    /**
      * @return string|null
      * @throws Exceptions\Exception
      */
@@ -348,7 +257,9 @@ class MySqliDriver implements DriverInterface
     }
 
     /**
-     * {@inheritDoc}
+     * @param mysqli_result $result
+     * @param int $position
+     * @return bool
      */
     public function dataSeek(&$result, $position)
     {

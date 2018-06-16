@@ -21,9 +21,4 @@ class IlluminateQueryTest extends RealQueryTest
 
         parent::setUp();
     }
-
-    public function testGetRow()
-    {
-        $this->markTestSkipped('No implemented');
-    }
 }

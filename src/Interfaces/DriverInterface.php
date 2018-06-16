@@ -49,7 +49,7 @@ interface DriverInterface
     public function getVersion();
 
     /**
-     * @param $result
+     * @param mixed $result
      * @return int
      */
     public function getRecordCount($result);
@@ -101,6 +101,16 @@ interface DriverInterface
     public function query($query);
 
     /**
+     * @return string|null
+     */
+    public function getLastError();
+
+    /**
+     * @return string|null
+     */
+    public function getLastErrorNo();
+
+    /**
      * @param string $name
      * @param $result
      * @return array
@@ -125,20 +135,5 @@ interface DriverInterface
      */
     public function getTableMetaData($result);
 
-    /**
-     * @return string|null
-     */
-    public function getLastError();
 
-    /**
-     * @return string|null
-     */
-    public function getLastErrorNo();
-
-    /**
-     * @param $result
-     * @param int $position
-     * @return bool
-     */
-    public function dataSeek(&$result, $position);
 }

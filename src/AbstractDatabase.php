@@ -3,12 +3,8 @@
 abstract class AbstractDatabase implements Interfaces\DatabaseInterface
 {
     use Traits\DebugTrait,
-        Traits\SupportTrait;
-
-    /**
-     * @var array
-     */
-    protected $config = [];
+        Traits\SupportTrait,
+        Traits\ConfigTrait;
 
     /**
      * @var Interfaces\DriverInterface
@@ -19,26 +15,6 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
      * @var int
      */
     protected $safeLoopCount = 1000;
-
-    /**
-     * @param $data
-     * @return $this
-     */
-    public function setConfig($data)
-    {
-        $this->config = $data;
-
-        return $this;
-    }
-
-    /**
-     * @param null|string $key
-     * @return mixed
-     */
-    public function getConfig($key = null)
-    {
-        return ($key === null ? $this->config : (isset($this->config[$key]) ? $this->config[$key] : null));
-    }
 
     /**
      * @return Interfaces\DriverInterface

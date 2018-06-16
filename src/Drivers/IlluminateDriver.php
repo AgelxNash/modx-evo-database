@@ -1,6 +1,5 @@
 <?php namespace AgelxNash\Modx\Evo\Database\Drivers;
 
-use AgelxNash\Modx\Evo\Database\Interfaces\DriverInterface;
 use AgelxNash\Modx\Evo\Database\Exceptions;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Illuminate\Database\Connection;
@@ -11,13 +10,11 @@ use Illuminate\Container\Container;
 use ReflectionClass;
 use PDO;
 
-class IlluminateDriver implements DriverInterface
+/**
+ * @property Connection $conn
+ */
+class IlluminateDriver extends AbstractDriver
 {
-    /**
-     * @var Connection
-     */
-    protected $conn;
-
     /**
      * @var string
      */
@@ -29,11 +26,6 @@ class IlluminateDriver implements DriverInterface
     protected $capsule;
 
     private $affectedRows = 0;
-
-    /**
-     * @var array
-     */
-    protected $config;
 
     /**
      * @var array
@@ -115,14 +107,6 @@ class IlluminateDriver implements DriverInterface
         $this->getCapsule()->bootEloquent();
 
         return $out;
-    }
-
-    /**
-     * @return array
-     */
-    public function getConfig()
-    {
-        return $this->config;
     }
 
     /**
@@ -251,7 +235,6 @@ class IlluminateDriver implements DriverInterface
     public function getVersion()
     {
         return $this->getConnect()->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION);
-        //return $this->getConnect()->server_info;
     }
 
     /**
@@ -382,81 +365,6 @@ class IlluminateDriver implements DriverInterface
     }
 
     /**
-     * @param string $name
-     * @param $result
-     * @return array
-     * @throws Exceptions\Exception
-     */
-    public function getColumn($name, $result)
-    {
-        $col = [];
-
-        if ($this->isResult($result)) {
-            while ($row = $this->getRow($result)) {
-                if (array_key_exists($name, $row)) {
-                    $col[] = $row[$name];
-                }
-            }
-        }
-
-        return $col;
-    }
-
-    /**
-     * @param $result
-     * @return array
-     */
-    public function getColumnNames($result)
-    {
-        $names = [];
-
-        if ($this->isResult($result)) {
-            $limit = $this->numFields($result);
-            for ($i = 0; $i < $limit; $i++) {
-                $names[] = $this->fieldName($result, $i);
-            }
-        }
-
-        return $names;
-    }
-
-    /**
-     * @param $result
-     * @return bool|mixed
-     * @throws Exceptions\Exception
-     */
-    public function getValue($result)
-    {
-        $out = false;
-
-        if ($this->isResult($result)) {
-            $result = $this->getRow($result, 'num');
-            $out = isset($result[0]) ? $result[0] : false;
-        }
-
-        return $out;
-    }
-
-    /**
-     * @param $result
-     * @return array|mixed
-     * @throws Exceptions\Exception
-     */
-    public function getTableMetaData($result)
-    {
-        $out = [];
-
-        if ($this->isResult($result)) {
-            while ($row = $this->getRow($result)) {
-                $fieldName = $row['Field'];
-                $out[$fieldName] = $row;
-            }
-        }
-
-        return $out;
-    }
-
-    /**
      * @return string|null
      * @throws Exceptions\Exception
      */
@@ -476,14 +384,5 @@ class IlluminateDriver implements DriverInterface
         $pdo = $this->getConnect()->getPdo();
         $error = $pdo->errorInfo();
         return (string)(isset($error[1]) ? $error[1] : $this->lastErrorNo);
-    }
-
-    /**
-     * {@inheritDoc}
-     * @param \PDOStatement $result
-     */
-    public function dataSeek(&$result, $position)
-    {
-        throw new Exceptions\DriverException('No implemented');
     }
 }

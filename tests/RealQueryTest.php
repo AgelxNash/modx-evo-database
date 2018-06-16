@@ -720,32 +720,5 @@ abstract class RealQueryTest extends TestCase
             $data,
             $this->instance->getRow($result)
         );
-
-        $this->assertTrue(
-            $this->instance->getDriver()->dataSeek($result, 0)
-        );
-
-        $this->assertEquals(
-            $data,
-            $this->instance->getRow($result, 'assoc')
-        );
-        $this->instance->getDriver()->dataSeek($result, 0);
-
-        $this->assertEquals(
-            [0 => 1, 1 => 'index'],
-            $this->instance->getRow($result, 'num')
-        );
-        $this->instance->getDriver()->dataSeek($result, 0);
-
-        $this->assertEquals(
-            (object)['id' => 1, 'alias' => 'index'],
-            $this->instance->getRow($result, 'object')
-        );
-        $this->instance->getDriver()->dataSeek($result, 0);
-
-        $this->assertEquals(
-            [0 => '1', 'id' => '1', 1 => 'index', 'alias' => 'index'],
-            $this->instance->getRow($result, 'both')
-        );
     }
 }

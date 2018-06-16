@@ -571,6 +571,29 @@ abstract class RealQueryTest extends TestCase
             $this->instance->escape("st'ring")
         );
 
+        $this->assertEquals(
+            10,
+            $this->instance->escape(10)
+        );
+
+        $this->assertEquals(
+            null,
+            $this->instance->escape(null)
+        );
+
+        $this->assertEquals(
+            [
+                [
+                    "st\'ring"
+                ]
+            ],
+            $this->instance->escape([
+                [
+                    "st'ring"
+                ]
+            ])
+        );
+
         $class = new ReflectionClass($this->instance);
         $property = $class->getProperty('safeLoopCount');
         $property->setAccessible(true);

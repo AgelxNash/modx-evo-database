@@ -134,6 +134,4 @@ interface DriverInterface
      * @return mixed
      */
     public function getTableMetaData($result);
-
-
 }

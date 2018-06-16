@@ -260,7 +260,7 @@ class IlluminateDriver implements DriverInterface
      */
     public function getRecordCount($result)
     {
-        return $result->rowCount();
+        return $this->isResult($result) ? $result->rowCount() : 0;
     }
 
     /**
@@ -291,7 +291,7 @@ class IlluminateDriver implements DriverInterface
      */
     public function numFields($result)
     {
-        return $result->columnCount();
+        return $this->isResult($result) ? $result->columnCount() : 0;
     }
 
     /**
@@ -301,7 +301,7 @@ class IlluminateDriver implements DriverInterface
      */
     public function fieldName($result, $col = 0)
     {
-        $field = $result->getColumnMeta($col);
+        $field = $this->isResult($result) ? $result->getColumnMeta($col) : [];
         return isset($field['name']) ? $field['name'] : null;
     }
 
@@ -391,7 +391,7 @@ class IlluminateDriver implements DriverInterface
     {
         $col = [];
 
-        if ($result instanceof PDOStatement) {
+        if ($this->isResult($result)) {
             while ($row = $this->getRow($result)) {
                 $col[] = $row[$name];
             }
@@ -408,7 +408,7 @@ class IlluminateDriver implements DriverInterface
     {
         $names = [];
 
-        if ($result instanceof PDOStatement) {
+        if ($this->isResult($result)) {
             $limit = $this->numFields($result);
             for ($i = 0; $i < $limit; $i++) {
                 $names[] = $this->fieldName($result, $i);
@@ -427,7 +427,7 @@ class IlluminateDriver implements DriverInterface
     {
         $out = false;
 
-        if ($result instanceof PDOStatement) {
+        if ($this->isResult($result)) {
             $result = $this->getRow($result, 'num');
             $out = isset($result[0]) ? $result[0] : false;
         }
@@ -444,7 +444,7 @@ class IlluminateDriver implements DriverInterface
     {
         $out = [];
 
-        if ($result instanceof PDOStatement) {
+        if ($this->isResult($result)) {
             while ($row = $this->getRow($result)) {
                 $fieldName = $row['Field'];
                 $out[$fieldName] = $row;

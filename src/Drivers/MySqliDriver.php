@@ -147,7 +147,7 @@ class MySqliDriver implements DriverInterface
      */
     public function getRecordCount($result)
     {
-        return $result->num_rows;
+        return $this->isResult($result) ? $result->num_rows : 0;
     }
 
     /**
@@ -179,7 +179,7 @@ class MySqliDriver implements DriverInterface
      */
     public function numFields($result)
     {
-        return $result->field_count;
+        return $this->isResult($result) ? $result->field_count : 0;
     }
 
     /**
@@ -189,7 +189,7 @@ class MySqliDriver implements DriverInterface
      */
     public function fieldName($result, $col = 0)
     {
-        $field = $result->fetch_field_direct($col);
+        $field = $this->isResult($result) ? $result->fetch_field_direct($col) : [];
 
         return isset($field->name) ? $field->name : null;
     }
@@ -264,7 +264,7 @@ class MySqliDriver implements DriverInterface
     {
         $col = [];
 
-        if ($result instanceof mysqli_result) {
+        if ($this->isResult($result)) {
             while ($row = $this->getRow($result)) {
                 $col[] = $row[$name];
             }
@@ -281,7 +281,7 @@ class MySqliDriver implements DriverInterface
     {
         $names = [];
 
-        if ($result instanceof mysqli_result) {
+        if ($this->isResult($result)) {
             $limit = $this->numFields($result);
             for ($i = 0; $i < $limit; $i++) {
                 $names[] = $this->fieldName($result, $i);
@@ -300,7 +300,7 @@ class MySqliDriver implements DriverInterface
     {
         $out = false;
 
-        if ($result instanceof mysqli_result) {
+        if ($this->isResult($result)) {
             $result = $this->getRow($result, 'num');
             $out = isset($result[0]) ? $result[0] : false;
         }
@@ -317,7 +317,7 @@ class MySqliDriver implements DriverInterface
     {
         $out = [];
 
-        if ($result instanceof mysqli_result) {
+        if ($this->isResult($result)) {
             while ($row = $this->getRow($result)) {
                 $fieldName = $row['Field'];
                 $out[$fieldName] = $row;
@@ -350,6 +350,6 @@ class MySqliDriver implements DriverInterface
      */
     public function dataSeek(&$result, $position)
     {
-        return $result->data_seek($position);
+        return $this->isResult($result) ? $result->data_seek($position) : false;
     }
 }

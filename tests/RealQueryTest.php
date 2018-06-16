@@ -129,6 +129,11 @@ abstract class RealQueryTest extends TestCase
             $this->instance->getColumnNames($result)
         );
 
+        $this->assertEquals(
+            [],
+            $this->instance->getColumnNames(null)
+        );
+
         $out = $this->instance->getColumn('id', $result);
         $this->assertEquals(
             ['1', '2', '4'],
@@ -140,8 +145,23 @@ abstract class RealQueryTest extends TestCase
         );
 
         $this->assertEquals(
+            [],
+            $this->instance->getColumn('id', null)
+        );
+
+        $this->assertEquals(
+            [],
+            $this->instance->getColumn('nop', $query)
+        );
+
+        $this->assertEquals(
             3,
             $this->instance->getRecordCount($result)
+        );
+
+        $this->assertEquals(
+            0,
+            $this->instance->getRecordCount(null)
         );
 
         $this->assertEquals(
@@ -155,8 +175,18 @@ abstract class RealQueryTest extends TestCase
         );
 
         $this->assertEquals(
+            null,
+            $this->instance->fieldName(null)
+        );
+
+        $this->assertEquals(
             2,
             $this->instance->numFields($result)
+        );
+
+        $this->assertEquals(
+            0,
+            $this->instance->numFields(null)
         );
     }
 
@@ -290,6 +320,11 @@ abstract class RealQueryTest extends TestCase
     public function testGetTableMetaData()
     {
         $this->instance->flushExecutedQuery();
+
+        $this->assertEquals(
+            [],
+            $this->instance->getTableMetaData('')
+        );
 
         $data = $this->instance->getTableMetaData($this->table);
 

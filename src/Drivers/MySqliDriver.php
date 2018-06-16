@@ -266,7 +266,9 @@ class MySqliDriver implements DriverInterface
 
         if ($this->isResult($result)) {
             while ($row = $this->getRow($result)) {
-                $col[] = $row[$name];
+                if (array_key_exists($name, $row)) {
+                    $col[] = $row[$name];
+                }
             }
         }
 

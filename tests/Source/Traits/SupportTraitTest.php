@@ -153,6 +153,16 @@ class SupportTraitTest extends TestCase
             ], true),
             'STEP 2/2'
         );
+
+        try {
+            $method->invoke($this->instance, '');
+            $this->assertTrue(false, 'Need TableNotDefinedException');
+        } catch (Database\Exceptions\TableNotDefinedException $exception) {
+            $this->assertEquals(
+                '',
+                $exception->getMessage()
+            );
+        }
     }
 
     public function testFunctionPrepareOrder()
@@ -336,5 +346,53 @@ class SupportTraitTest extends TestCase
                 );
             }
         }
+    }
+
+    public function testPrepareFields()
+    {
+        $method = new ReflectionMethod($this->instance, 'prepareFields');
+        $method->setAccessible(true);
+
+        $this->assertEquals('*', $method->invoke($this->instance, []));
+        $this->assertEquals('*', $method->invoke($this->instance, ''));
+    }
+
+    public function testConvertDate()
+    {
+        $time = time();
+
+        $this->assertFalse(
+            $this->instance->convertDate(0)
+        );
+
+        $this->assertEquals(
+            date('Y-m-d', $time),
+            $this->instance->convertDate($time, 'DATE')
+        );
+
+        $this->assertEquals(
+            date('H:i:s', $time),
+            $this->instance->convertDate($time, 'TIME')
+        );
+
+        $this->assertEquals(
+            date('Y', $time),
+            $this->instance->convertDate($time, 'YEAR')
+        );
+
+        $this->assertEquals(
+            date('Y-m-d H:i:s', $time),
+            $this->instance->convertDate($time)
+        );
+
+        $this->assertEquals(
+            date('Y-m-d H:i:s', $time),
+            $this->instance->convertDate($time, 'DATETIME')
+        );
+
+        $this->assertEquals(
+            date('Y-m-d H:i:s', $time),
+            $this->instance->convertDate($time, 'N\A')
+        );
     }
 }

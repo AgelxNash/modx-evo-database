@@ -154,6 +154,9 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface, Interfa
         );
 
         if ($result === false) {
+            /**
+             * @TODO: NOT WORK?
+             */
             $this->checkLastError($this->getLastQuery());
         } else {
             $tend = microtime(true);
@@ -166,10 +169,9 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface, Interfa
                     $totalTime
                 );
             }
-
-            return $result;
         }
-        return false;
+
+        return $result;
     }
 
     /**

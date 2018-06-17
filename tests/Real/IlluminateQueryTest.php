@@ -24,4 +24,27 @@ class IlluminateQueryTest extends RealQueryTest
 
         parent::setUp();
     }
+
+    public function testBothGetRow()
+    {
+        $query = 'SELECT `id`, `alias` FROM ' . $this->table . ' WHERE id = 1';
+        $result = $this->instance->query($query);
+
+        $this->assertEquals(
+            [0 => '1', 'id' => '1', 1 => 'index', 'alias' => 'index'],
+            $this->instance->getRow($result, 'both')
+        );
+    }
+
+
+    public function testObjecGetRow()
+    {
+        $query = 'SELECT `id`, `alias` FROM ' . $this->table . ' WHERE id = 1';
+        $result = $this->instance->query($query);
+
+        $this->assertEquals(
+            (object)['id' => '1', 'alias' => 'index'],
+            $this->instance->getRow($result, 'object')
+        );
+    }
 }

@@ -109,4 +109,17 @@ class DatabaseTest extends TestCase
             'STEP 8/8'
         );
     }
+
+    public function testInsertFailFields()
+    {
+        try {
+            $this->instance->insert('0', 'site_content');
+            $this->assertTrue(false, 'Need InvalidFieldException');
+        } catch (Database\Exceptions\InvalidFieldException $exception) {
+            $this->assertEquals(
+                '0',
+                $exception->getData()
+            );
+        }
+    }
 }

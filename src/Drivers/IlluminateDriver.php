@@ -303,7 +303,7 @@ class IlluminateDriver extends AbstractDriver
                 break;
             default:
                 throw new Exceptions\UnknownFetchTypeException(
-                    "Unknown get type ($mode) specified for fetchRow - must be empty, 'assoc', 'num' or 'both'."
+                    "Unknown get type ($mode) specified for fetchRow - must be empty, 'assoc', 'num', 'object' or 'both'."
                 );
         }
 

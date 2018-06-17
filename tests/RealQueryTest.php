@@ -69,6 +69,14 @@ abstract class RealQueryTest extends TestCase
         );
 
         $this->assertEquals('', $this->instance->getLastErrorNo());
+
+        try {
+            (new Database\Database(array_merge($this->config, ['database' => 'bug']), $this->driver))
+                ->connect();
+            $this->assertFalse(true, 'Need ConnectException');
+        } catch (Database\Exceptions\ConnectException $exception) {
+            $this->assertTrue(true);
+        }
     }
 
     public function testDisconnect()
@@ -149,6 +157,12 @@ abstract class RealQueryTest extends TestCase
     public function testHelperMethods()
     {
         $query = 'SELECT id,pagetitle FROM ' . $this->table . ' ORDER BY id ASC LIMIT 3';
+
+        $this->assertEquals(
+            ['id', 'pagetitle'],
+            $this->instance->getColumnNames($query)
+        );
+
         $result = $this->instance->query($query);
 
         $this->assertEquals(
@@ -630,6 +644,11 @@ abstract class RealQueryTest extends TestCase
 
     public function testEscape()
     {
+        $this->assertEquals(
+            '',
+            $this->instance->escape([])
+        );
+
         $this->assertEquals(
             "st\'ring",
             $this->instance->escape("st'ring")

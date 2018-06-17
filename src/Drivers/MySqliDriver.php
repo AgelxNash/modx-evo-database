@@ -77,18 +77,6 @@ class MySqliDriver extends AbstractDriver
                 $this->getConfig('password'),
                 $this->getConfig('database')
             );
-
-            if ($this->isConnected() && $this->getConnect()->connect_error) {
-                $this->conn = null;
-                throw new Exceptions\ConnectException($this->conn->connect_error);
-            }
-
-            if (! $this->isConnected()) {
-                $this->conn = null;
-                throw new Exceptions\ConnectException(
-                    $this->getLastError() ?: 'Failed to create the database connection!'
-                );
-            }
         } catch (mysqli_sql_exception $exception) {
             $this->conn = null;
             throw new Exceptions\ConnectException($exception->getMessage(), $exception->getCode());

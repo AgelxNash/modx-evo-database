@@ -372,40 +372,20 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface, Interfa
         $where = '',
         $limit = ''
     ) {
-        $table = $this->prepareFrom($table);
-
-        $useFields = null;
         $lid = null;
 
-        if (\is_array($fields)) {
-            $useFields = empty($fromTable) ?
-                $this->prepareValues($fields) :
-                $this->prepareFields($fields, true);
-        } else {
-            $useFields = $fields;
-        }
-
-        if (empty($useFields) || ! \is_scalar($useFields) || ($useFields === '*' && ! empty($fromTable))) {
-            throw (new Exceptions\InvalidFieldException('Invalid insert fields'))
-                ->setData($fields);
-        }
-
         if (empty($fromTable)) {
-            $this->query("INSERT INTO {$table} {$useFields}");
-        } else {
-            if (empty($fromFields) || $fromFields === '*') {
-                $fromFields = $this->prepareFields($fields, true);
-            } else {
-                $fromFields = $this->prepareFields($fromFields, true);
+            $table = $this->prepareFrom($table);
+            $useFields = \is_array($fields) ? $this->prepareValues($fields) : $fields;
+
+            if (empty($useFields) || ! \is_scalar($useFields) || $useFields === '*') {
+                throw (new Exceptions\InvalidFieldException('Invalid insert fields'))
+                    ->setData($fields);
             }
 
-            $where = $this->prepareWhere($where);
-            $limit = $this->prepareLimit($limit);
-
-            $lid = $this->query(
-                "INSERT INTO {$table} ({$useFields}) SELECT {$fromFields} FROM {$fromTable} {$where} {$limit}"
-            );
-            $lid = $this->isResult($lid) ? true : $lid;
+            $this->query("INSERT INTO {$table} {$useFields}");
+        } else {
+            $lid = $this->insertFrom($fields, $table, $fromFields, $fromTable, $where, $limit);
         }
 
         if ($lid === null && ($lid = $this->getInsertId()) === false) {
@@ -413,6 +393,50 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface, Interfa
         }
 
         return $this->convertValue($lid);
+    }
+
+    /**
+     * @param string|array $fields
+     * @param string $table
+     * @param string|array $fromFields
+     * @param string $fromTable
+     * @param string|array $where
+     * @param string $limit
+     * @return mixed
+     * @throws Exceptions\InvalidFieldException
+     * @throws Exceptions\TableNotDefinedException
+     */
+    public function insertFrom(
+        $fields,
+        $table,
+        $fromFields = '*',
+        $fromTable = '',
+        $where = '',
+        $limit = ''
+    ) {
+        $table = $this->prepareFrom($table);
+        $lid = null;
+        $useFields = \is_array($fields) ? $this->prepareFields($fields, true) : $fields;
+
+        if (empty($useFields) || ! \is_scalar($useFields) || $useFields === '*') {
+            throw (new Exceptions\InvalidFieldException('Invalid insert fields'))
+                ->setData($fields);
+        }
+
+        if (empty($fromFields) || $fromFields === '*') {
+            $fromFields = $this->prepareFields($fields, true);
+        } else {
+            $fromFields = $this->prepareFields($fromFields, true);
+        }
+
+        $where = $this->prepareWhere($where);
+        $limit = $this->prepareLimit($limit);
+
+        $lid = $this->query(
+            "INSERT INTO {$table} ({$useFields}) SELECT {$fromFields} FROM {$fromTable} {$where} {$limit}"
+        );
+
+        return $this->isResult($lid) ? true : $lid;
     }
 
     /**

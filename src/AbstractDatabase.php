@@ -63,7 +63,7 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface, Interfa
         $this->setConnectionTime(0);
         $this->flushExecutedQuery();
 
-        return $this;
+        return true;
     }
 
     /**
@@ -415,7 +415,6 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface, Interfa
         $limit = ''
     ) {
         $table = $this->prepareFrom($table);
-        $lid = null;
         $useFields = \is_array($fields) ? $this->prepareFields($fields, true) : $fields;
 
         if (empty($useFields) || ! \is_scalar($useFields) || $useFields === '*') {

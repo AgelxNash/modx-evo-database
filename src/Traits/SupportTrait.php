@@ -34,21 +34,14 @@ trait SupportTrait
     {
         $date = false;
         if (! empty($timestamp) && $timestamp > 0) {
-            switch ($fieldType) {
-                case 'DATE':
-                    $date = date('Y-m-d', $timestamp);
-                    break;
-                case 'TIME':
-                    $date = date('H:i:s', $timestamp);
-                    break;
-                case 'YEAR':
-                    $date = date('Y', $timestamp);
-                    break;
-                case 'DATETIME':
-                default:
-                    $date = date('Y-m-d H:i:s', $timestamp);
-                    break;
-            }
+            $format = [
+                'DATE' => 'Y-m-d',
+                'TIME' => 'H:i:s',
+                'YEAR' => 'Y',
+                'DATETIME' => 'Y-m-d H:i:s',
+            ];
+            $use = isset($format[$fieldType]) ? $format[$fieldType] : 'Y-m-d H:i:s';
+            $date = date($use, $timestamp);
         }
 
         return $date;
@@ -135,9 +128,7 @@ trait SupportTrait
                     $values[] = $this->prepareNull($value);
                 }
             }
-            if (\is_array($values)) {
-                $values = implode(', ', $values);
-            }
+            $values = $this->withCommaSeparator($values);
             if ($wrap === false) {
                 $values = '(' . $values . ')';
             }
@@ -211,10 +202,9 @@ trait SupportTrait
             foreach ($data as $key => $value) {
                 $data[$key] = "`{$key}` = " . $value;
             }
-            $data = implode(', ', $data);
         }
 
-        return trim($data);
+        return $this->withCommaSeparator($data);
     }
 
     /**
@@ -288,5 +278,18 @@ trait SupportTrait
         }
 
         return $data;
+    }
+
+    /**
+     * @param $values
+     * @return string
+     */
+    protected function withCommaSeparator($values)
+    {
+        if (\is_array($values)) {
+            $values = implode(', ', $values);
+        }
+
+        return trim($values);
     }
 }

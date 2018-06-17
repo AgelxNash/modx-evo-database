@@ -20,7 +20,7 @@ interface ProxyInterface extends ConfigInterface
     public function connect();
 
     /**
-     * @return DriverInterface
+     * @return bool
      */
     public function disconnect();
 

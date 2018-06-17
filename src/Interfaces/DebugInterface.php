@@ -70,4 +70,14 @@ interface DebugInterface
      * @return int
      */
     public function addQueriesTime($time);
+
+    /**
+     * @return string|null
+     */
+    public function getLastError();
+
+    /**
+     * @return string|null
+     */
+    public function getLastErrorNo();
 }

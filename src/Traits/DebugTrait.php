@@ -53,6 +53,16 @@ trait DebugTrait
     /**
      * {@inheritDoc}
      */
+    abstract public function getLastError();
+
+    /**
+     * {@inheritDoc}
+     */
+    abstract public function getLastErrorNo();
+
+    /**
+     * {@inheritDoc}
+     */
     abstract public function getRecordCount($result);
 
     /**

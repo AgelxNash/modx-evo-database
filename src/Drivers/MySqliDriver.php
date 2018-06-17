@@ -96,7 +96,7 @@ class MySqliDriver extends AbstractDriver
 
         $this->conn = null;
 
-        return $this;
+        return true;
     }
 
     /**
@@ -159,6 +159,8 @@ class MySqliDriver extends AbstractDriver
 
     /**
      * {@inheritDoc}
+     * @return bool|mysqli_result
+     * @throws \ReflectionException
      */
     public function query($sql)
     {

@@ -173,7 +173,7 @@ class IlluminateDriver extends AbstractDriver
         $this->lastErrorNo = '';
         $this->lastError = [];
 
-        return $this;
+        return true;
     }
 
     /**
@@ -241,25 +241,15 @@ class IlluminateDriver extends AbstractDriver
 
     /**
      * {@inheritDoc}
+     * @return bool|PDOStatement
      */
     public function query($sql)
     {
-        $result = null;
         try {
-            $pdo = $this->getConnect()->getPdo();
-            $result = $pdo->prepare(
-                $sql,
-                [
-                    \PDO::ATTR_CURSOR => \PDO::CURSOR_SCROLL,
+            $result = $this->prepare($sql);
+            $this->execute($result);
 
-                ]
-            );
-            $result->setFetchMode(\PDO::FETCH_ASSOC);
-            if ($result->execute() === false) {
-                $result = false;
-            }
-            $this->affectedRows = \is_bool($result) ? 0 : $result->rowCount();
-            if ($this->affectedRows === 0 && $this->isResult($result) && 0 !== mb_stripos(trim($sql), 'SELECT')) {
+            if ($this->saveAffectedRows($result) === 0 && $this->isResult($result) && ! $this->isSelectQuery($sql)) {
                 $result = true;
             }
         } catch (\Exception $exception) {
@@ -335,6 +325,47 @@ class IlluminateDriver extends AbstractDriver
     }
 
     /**
+     * @param PDOStatement|bool $result
+     * @return int
+     */
+    protected function saveAffectedRows($result)
+    {
+        $this->affectedRows = \is_bool($result) ? 0 : $result->rowCount();
+        return $this->getAffectedRows();
+    }
+
+    /**
+     * @param string $sql
+     * @return PDOStatement|bool
+     */
+    public function prepare($sql)
+    {
+        $pdo = $this->getConnect()->getPdo();
+        $result = $pdo->prepare(
+            $sql,
+            [
+                \PDO::ATTR_CURSOR => \PDO::CURSOR_SCROLL,
+
+            ]
+        );
+
+        if ($this->isResult($result)) {
+            $result->setFetchMode(\PDO::FETCH_ASSOC);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param PDOStatement|bool $result
+     * @return bool
+     */
+    public function execute($result)
+    {
+        return $this->isResult($result) ? $result->execute() : (bool)$result;
+    }
+
+    /**
      * @param DispatcherContract|null $dispatcher
      * @return bool
      */
@@ -376,5 +407,14 @@ class IlluminateDriver extends AbstractDriver
     {
         $connections = $this->getCapsule()->getDatabaseManager()->getConnections();
         return isset($connections[$name]);
+    }
+
+    /**
+     * @param string $query
+     * @return bool
+     */
+    protected function isSelectQuery($query)
+    {
+        return 0 === mb_stripos(trim($query), 'SELECT');
     }
 }

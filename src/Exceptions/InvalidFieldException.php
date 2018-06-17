@@ -3,12 +3,12 @@
 class InvalidFieldException extends Exception
 {
     /**
-     * @var string
+     * @var mixed
      */
     protected $data;
 
     /**
-     * @param string $data
+     * @param mixed $data
      * @return $this
      */
     public function setData($data)
@@ -19,7 +19,7 @@ class InvalidFieldException extends Exception
     }
 
     /**
-     * @return string
+     * @return mixed
      */
     public function getData()
     {

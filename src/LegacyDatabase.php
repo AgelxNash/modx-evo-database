@@ -59,7 +59,11 @@ class LegacyDatabase extends AbstractDatabase
             $dbase = trim($this->getConfig('database'), '`');
             $prefix = $this->getConfig('prefix');
 
-            $result = preg_replace('@\[\+prefix\+\]([0-9a-zA-Z_]+)@', "`{$dbase}`.`{$prefix}$1`", $tableName);
+            $result = preg_replace(
+                '@\[\+prefix\+\](\w+)@',
+                '`' . $dbase . '`.`' . $prefix . '$1`',
+                $tableName
+            );
         } else {
             $result = $tableName;
         }

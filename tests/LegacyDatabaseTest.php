@@ -63,4 +63,17 @@ class LegacyDatabaseTest extends TestCase
             $this->instance->replaceFullTableName('[+prefix+]site_content', true)
         );
     }
+
+    public function testArrayQuery()
+    {
+        $queries = [
+            "SELECT count(*) FROM [+prefix+]site_content",
+            "SELECT count(*) FROM " . $this->instance->getFullTableName('site_content')
+        ];
+
+        $this->assertCount(
+            2,
+            $this->instance->query($queries)
+        );
+    }
 }

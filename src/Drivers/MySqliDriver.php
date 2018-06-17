@@ -20,12 +20,11 @@ class MySqliDriver extends AbstractDriver
         $driver = new mysqli_driver();
         $driver->report_mode = MYSQLI_REPORT_STRICT | MYSQLI_REPORT_ERROR;
 
-        $this->config = $config;
+        $this->setConfig($config);
     }
 
     /**
-     * @return mixed
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
     public function getConnect()
     {
@@ -37,29 +36,61 @@ class MySqliDriver extends AbstractDriver
     }
 
     /**
-     * @return mysqli
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
+     */
+    public function isConnected()
+    {
+        return ($this->conn instanceof mysqli);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getLastError()
+    {
+        return $this->getConnect()->error;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getLastErrorNo()
+    {
+        $out = (string)$this->getConnect()->sqlstate;
+
+        if ($out === '00000') {
+            $out = '';
+        }
+
+        return $out;
+    }
+
+    /**
+     * {@inheritDoc}
      */
     public function connect()
     {
         try {
             $this->conn = new mysqli(
-                $this->config['host'],
-                $this->config['username'],
-                $this->config['password'],
-                $this->config['database']
+                $this->getConfig('host'),
+                $this->getConfig('username'),
+                $this->getConfig('password'),
+                $this->getConfig('database')
             );
 
             if ($this->isConnected() && $this->getConnect()->connect_error) {
+                $this->conn = null;
                 throw new Exceptions\ConnectException($this->conn->connect_error);
             }
 
             if (! $this->isConnected()) {
+                $this->conn = null;
                 throw new Exceptions\ConnectException(
                     $this->getLastError() ?: 'Failed to create the database connection!'
                 );
             }
         } catch (mysqli_sql_exception $exception) {
+            $this->conn = null;
             throw new Exceptions\ConnectException($exception->getMessage(), $exception->getCode());
         }
 
@@ -81,76 +112,7 @@ class MySqliDriver extends AbstractDriver
     }
 
     /**
-     * @return bool
-     */
-    public function isConnected()
-    {
-        return ($this->conn instanceof mysqli);
-    }
-
-    /**
-     * @param $data
-     * @return mixed
-     * @throws Exceptions\Exception
-     */
-    public function escape($data)
-    {
-        return $this->getConnect()->escape_string($data);
-    }
-
-    /**
-     * @return mixed
-     * @throws Exceptions\Exception
-     */
-    public function getInsertId()
-    {
-        return $this->getConnect()->insert_id;
-    }
-
-    /**
-     * @return int
-     * @throws Exceptions\Exception
-     */
-    public function getAffectedRows()
-    {
-        return $this->getConnect()->affected_rows;
-    }
-
-    /**
-     * @return string
-     * @throws Exceptions\Exception
-     */
-    public function getVersion()
-    {
-        return $this->getConnect()->server_info;
-    }
-
-    /**
-     * @param mysqli_result $result
-     * @return int
-     */
-    public function getRecordCount($result)
-    {
-        return $this->isResult($result) ? $result->num_rows : 0;
-    }
-
-    /**
      * {@inheritDoc}
-     */
-    public function setCharset($charset, $collation, $method = null)
-    {
-        if ($method === null) {
-            $method = $this->config['method'];
-        }
-        if ($this->query($method . ' ' . $charset . ' COLLATE ' . $collation) === true) {
-            return $this->getConnect()->set_charset($charset);
-        }
-        return false;
-    }
-
-    /**
-     * @param $result
-     * @return bool
      */
     public function isResult($result)
     {
@@ -159,7 +121,7 @@ class MySqliDriver extends AbstractDriver
 
     /**
      * @param mysqli_result $result
-     * @return int
+     * {@inheritDoc}
      */
     public function numFields($result)
     {
@@ -168,8 +130,7 @@ class MySqliDriver extends AbstractDriver
 
     /**
      * @param mysqli_result $result
-     * @param int $col
-     * @return string|null
+     * {@inheritDoc}
      */
     public function fieldName($result, $col = 0)
     {
@@ -179,9 +140,21 @@ class MySqliDriver extends AbstractDriver
     }
 
     /**
-     * @param string $name
-     * @return bool
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
+     */
+    public function setCharset($charset, $method = null)
+    {
+        if ($method === null) {
+            $method = $this->getConfig('method');
+        }
+
+        $this->query($method . ' ' . $charset);
+
+        return $this->getConnect()->set_charset($charset);
+    }
+
+    /**
+     * {@inheritDoc}
      */
     public function selectDb($name)
     {
@@ -189,10 +162,43 @@ class MySqliDriver extends AbstractDriver
     }
 
     /**
+     * {@inheritDoc}
+     */
+    public function escape($data)
+    {
+        return $this->getConnect()->escape_string($data);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function query($sql)
+    {
+        try {
+            $result = $this->getConnect()->query($sql);
+        } catch (mysqli_sql_exception $exception) {
+            $reflect = new ReflectionClass($exception);
+            $property = $reflect->getProperty('sqlstate');
+            $property->setAccessible(true);
+            throw (new Exceptions\QueryException($exception->getMessage(), $property->getValue($exception)))
+                ->setQuery($sql);
+        }
+
+        return $result;
+    }
+
+    /**
      * @param mysqli_result $result
-     * @param string $mode
-     * @return array|mixed|object|\stdClass
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
+     */
+    public function getRecordCount($result)
+    {
+        return $this->isResult($result) ? $result->num_rows : 0;
+    }
+
+    /**
+     * @param mysqli_result $result
+     * {@inheritDoc}
      */
     public function getRow($result, $mode = 'assoc')
     {
@@ -219,41 +225,27 @@ class MySqliDriver extends AbstractDriver
     }
 
     /**
-     * @param string $query
-     * @return mixed
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
-    public function query($query)
+    public function getVersion()
     {
-        try {
-            $result = $this->getConnect()->query($query);
-        } catch (mysqli_sql_exception $exception) {
-            $reflect = new ReflectionClass($exception);
-            $property = $reflect->getProperty('sqlstate');
-            $property->setAccessible(true);
-            throw (new Exceptions\QueryException($exception->getMessage(), $property->getValue($exception)))
-                ->setQuery($query);
-        }
-
-        return $result;
+        return $this->getConnect()->server_info;
     }
 
     /**
-     * @return string|null
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
-    public function getLastError()
+    public function getInsertId()
     {
-        return $this->getConnect()->error;
+        return $this->getConnect()->insert_id;
     }
 
     /**
-     * @return string|null
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
-    public function getLastErrorNo()
+    public function getAffectedRows()
     {
-        return (string)$this->getConnect()->sqlstate;
+        return $this->getConnect()->affected_rows;
     }
 
     /**

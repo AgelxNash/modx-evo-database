@@ -1,6 +1,6 @@
 <?php namespace AgelxNash\Modx\Evo\Database;
 
-abstract class AbstractDatabase implements Interfaces\DatabaseInterface
+abstract class AbstractDatabase implements Interfaces\DatabaseInterface, Interfaces\DebugInterface
 {
     use Traits\DebugTrait,
         Traits\SupportTrait,
@@ -17,40 +17,23 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     protected $safeLoopCount = 1000;
 
     /**
-     * @return Interfaces\DriverInterface
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
-    public function getDriver()
+    public function getLastError()
     {
-        return $this->driver;
+        return $this->getDriver()->getLastError();
     }
 
     /**
-     * @param string|Interfaces\DriverInterface $driver
-     * @return Interfaces\DriverInterface
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
-    public function setDriver($driver)
+    public function getLastErrorNo()
     {
-        if (! \in_array(Interfaces\DriverInterface::class, class_implements($driver), true)) {
-            throw new Exceptions\DriverException(
-                $driver . ' should implements the ' . Interfaces\DriverInterface::class
-            );
-        }
-
-        if (is_scalar($driver)) {
-            $this->driver = new $driver($this->getConfig());
-        } else {
-            $this->driver = $driver;
-            $this->config = array_merge($this->config, $driver->getConfig());
-        }
-
-        return $this->driver;
+        return (string)$this->getDriver()->getLastErrorNo();
     }
 
     /**
-     * @return mixed
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
     public function connect()
     {
@@ -60,11 +43,10 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
 
         $totalTime = microtime(true) - $tStart;
         if ($this->isDebug()) {
-            $this->connectionTime = $totalTime;
+            $this->setConnectionTime($totalTime);
         }
         $this->setCharset(
             $this->getConfig('charset'),
-            $this->getConfig('collation'),
             $this->getConfig('method')
         );
 
@@ -72,21 +54,20 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @return $this
+     * {@inheritDoc}
      */
     public function disconnect()
     {
         $this->getDriver()->disconnect();
 
-        $this->connectionTime = 0;
+        $this->setConnectionTime(0);
         $this->flushExecutedQuery();
 
         return $this;
     }
 
     /**
-     * @param $result
-     * @return bool
+     * {@inheritDoc}
      */
     public function isResult($result)
     {
@@ -94,8 +75,7 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @param $result
-     * @return int
+     * {@inheritDoc}
      */
     public function numFields($result)
     {
@@ -103,9 +83,7 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @param $result
-     * @param int $col
-     * @return string|null
+     * {@inheritDoc}
      */
     public function fieldName($result, $col = 0)
     {
@@ -113,27 +91,15 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @param string $charset
-     * @param string $collation
-     * @param string|null $method
-     * @return bool
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
-    public function setCharset($charset, $collation, $method = null)
+    public function setCharset($charset, $method = null)
     {
-        $tStart = microtime(true);
-
-        $result = $this->getDriver()->setCharset($charset, $collation, $method);
-
-        $this->queryTime += microtime(true) - $tStart;
-
-        return $result;
+        return $this->getDriver()->setCharset($charset, $method);
     }
 
     /**
-     * @param string $name
-     * @return bool
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
     public function selectDb($name)
     {
@@ -141,16 +107,14 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
 
         $result = $this->getDriver()->selectDb($name);
 
-        $this->queryTime += microtime(true) - $tStart;
+        $this->addQueriesTime(microtime(true) - $tStart);
 
         return $result;
     }
 
     /**
-     * @param string|array $data
-     * @param int $safeCount
-     * @return array|string
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
+     * @throws Exceptions\TooManyLoopsException
      */
     public function escape($data, $safeCount = 0)
     {
@@ -174,9 +138,8 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @param mixed $sql
-     * @return mixed
-     * @throws Exceptions\Exception
+     * @param string|array $sql
+     * {@inheritDoc}
      */
     public function query($sql)
     {
@@ -184,7 +147,7 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
         if (\is_array($sql)) {
             $sql = implode("\n", $sql);
         }
-        $this->lastQuery = $sql;
+        $this->setLastQuery($sql);
 
         $result = $this->getDriver()->query(
             $this->getLastQuery()
@@ -195,16 +158,14 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
         } else {
             $tend = microtime(true);
             $totalTime = $tend - $tStart;
-            $this->queryTime += $totalTime;
+            $this->addQueriesTime($totalTime);
             if ($this->isDebug()) {
                 $this->collectQuery(
                     $result,
                     $this->getLastQuery(),
-                    $this->executedQueries + 1,
                     $totalTime
                 );
             }
-            $this->executedQueries++;
 
             return $result;
         }
@@ -212,32 +173,164 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @param string $table
-     * @param array|string $where
-     * @param string $orderBy
-     * @param string $limit
-     * @return mixed
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
+     */
+    public function getRecordCount($result)
+    {
+        return $this->getDriver()->getRecordCount($result);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getRow($result, $mode = 'assoc')
+    {
+        if (\is_scalar($result)) {
+            $result = $this->query($result);
+        }
+
+        return $this->getDriver()->getRow($result, $mode);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getVersion()
+    {
+        return $this->getDriver()->getVersion();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getInsertId()
+    {
+        return $this->convertValue(
+            $this->getDriver()->getInsertId()
+        );
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getAffectedRows()
+    {
+        return $this->getDriver()->getAffectedRows();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getColumn($name, $result)
+    {
+        if (\is_scalar($result)) {
+            $result = $this->query($result);
+        }
+
+        return $this->getDriver()->getColumn($name, $result);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getColumnNames($result)
+    {
+        if (\is_scalar($result)) {
+            $result = $this->query($result);
+        }
+        return $this->getDriver()->getColumnNames($result);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getValue($result)
+    {
+        if (\is_scalar($result)) {
+            $result = $this->query($result);
+        }
+
+        return $this->convertValue(
+            $this->getDriver()->getValue($result)
+        );
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getTableMetaData($table)
+    {
+        $metadata = [];
+        if (! empty($table)) {
+            $sql = 'SHOW FIELDS FROM ' . $table;
+            $result = $this->query($sql);
+            $metadata = $this->getDriver()->getTableMetaData($result);
+        }
+
+        return $metadata;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getDriver()
+    {
+        return $this->driver;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function setDriver($driver)
+    {
+        if (! \in_array(Interfaces\DriverInterface::class, class_implements($driver), true)) {
+            throw new Exceptions\DriverException(
+                $driver . ' should implements the ' . Interfaces\DriverInterface::class
+            );
+        }
+
+        if (is_scalar($driver)) {
+            $this->driver = new $driver($this->getConfig());
+        } else {
+            $this->driver = $driver;
+            $this->config = array_merge($this->config, $driver->getConfig());
+        }
+
+        return $this->driver;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function makeArray($result, $index = false)
+    {
+        $rsArray = [];
+        $iterator = 0;
+        while ($row = $this->getRow($result)) {
+            $returnIndex = $index !== false && isset($row[$index]) ? $row[$index] : $iterator;
+            $rsArray[$returnIndex] = $row;
+            $iterator++;
+        }
+
+        return $rsArray;
+    }
+
+    /**
+     * {@inheritDoc}
      */
     public function delete($table, $where = '', $orderBy = '', $limit = '')
     {
         $table = $this->prepareFrom($table);
         $where = $this->prepareWhere($where);
         $orderBy = $this->prepareOrder($orderBy);
-        $limit = $this->prepareOrder($limit);
+        $limit = $this->prepareLimit($limit);
 
         $result = $this->query("DELETE FROM {$table} {$where} {$orderBy} {$limit}");
         return $this->isResult($result) ? true : $result;
     }
 
     /**
-     * @param array|string $fields
-     * @param array|string $tables
-     * @param array|string $where
-     * @param string $orderBy
-     * @param string $limit
-     * @return mixed
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
     public function select($fields, $tables, $where = '', $orderBy = '', $limit = '')
     {
@@ -251,11 +344,7 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @param array|string $values
-     * @param string $table
-     * @param array|string $where
-     * @return mixed
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
     public function update($values, $table, $where = '')
     {
@@ -271,14 +360,7 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @param array|string $fields
-     * @param string $table
-     * @param array|string $fromFields
-     * @param string $fromTable
-     * @param array|string $where
-     * @param string $limit
-     * @return mixed
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
     public function insert(
         $fields,
@@ -332,11 +414,7 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @param string|array $fields
-     * @param string $table
-     * @param array|string $where
-     * @return mixed
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
     public function save($fields, $table, $where = '')
     {
@@ -356,9 +434,7 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @param string $table
-     * @return mixed
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
     public function optimize($table)
     {
@@ -371,9 +447,7 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @param string $table
-     * @return mixed
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
     public function alterTable($table)
     {
@@ -383,9 +457,7 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @param string $table
-     * @return mixed
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
     public function truncate($table)
     {
@@ -395,135 +467,31 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface
     }
 
     /**
-     * @param $result
-     * @return int
+     * {@inheritDoc}
      */
-    public function getRecordCount($result)
+    public function getTableName($table, $escape = true)
     {
-        return $this->getDriver()->getRecordCount($result);
-    }
-
-    /**
-     * @param $result
-     * @param string $mode
-     * @return array|mixed|object|\stdClass
-     * @throws Exceptions\Exception
-     */
-    public function getRow($result, $mode = 'assoc')
-    {
-        if (\is_scalar($result)) {
-            $result = $this->query($result);
+        if (empty($table)) {
+            throw new Exceptions\TableNotDefinedException($table);
         }
 
-        return $this->getDriver()->getRow($result, $mode);
+        $out = $this->getConfig('prefix') . $table;
+
+        return $escape ? '`' . $out . '`' : $out;
     }
 
     /**
-     * @param string string $name
-     * @param mixed $result
-     * @return array
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
-    public function getColumn($name, $result)
+    public function getFullTableName($table)
     {
-        if (\is_scalar($result)) {
-            $result = $this->query($result);
+        if (empty($table)) {
+            throw new Exceptions\TableNotDefinedException($table);
         }
 
-        return $this->getDriver()->getColumn($name, $result);
-    }
-
-    /**
-     * @param mixed $result
-     * @return array
-     * @throws Exceptions\Exception
-     */
-    public function getColumnNames($result)
-    {
-        if (\is_scalar($result)) {
-            $result = $this->query($result);
-        }
-        return $this->getDriver()->getColumnNames($result);
-    }
-
-    /**
-     * @param mixed $result
-     * @return bool|mixed
-     * @throws Exceptions\Exception
-     */
-    public function getValue($result)
-    {
-        if (\is_scalar($result)) {
-            $result = $this->query($result);
-        }
-
-        return $this->convertValue(
-            $this->getDriver()->getValue($result)
-        );
-    }
-
-    /**
-     * @param string $table
-     * @return array
-     * @throws Exceptions\Exception
-     */
-    public function getTableMetaData($table)
-    {
-        $metadata = [];
-        if (! empty($table)) {
-            $sql = 'SHOW FIELDS FROM ' . $table;
-            $result = $this->query($sql);
-            $metadata = $this->getDriver()->getTableMetaData($result);
-        }
-
-        return $metadata;
-    }
-
-    /**
-     * @param $result
-     * @param bool $index
-     * @return array
-     * @throws Exceptions\Exception
-     */
-    public function makeArray($result, $index = false)
-    {
-        $rsArray = [];
-        $iterator = 0;
-        while ($row = $this->getRow($result)) {
-            $returnIndex = $index !== false && isset($row[$index]) ? $row[$index] : $iterator;
-            $rsArray[$returnIndex] = $row;
-            $iterator++;
-        }
-
-        return $rsArray;
-    }
-
-    /**
-     * @return string
-     * @throws Exceptions\Exception
-     */
-    public function getVersion()
-    {
-        return $this->getDriver()->getVersion();
-    }
-
-    /**
-     * @return mixed
-     * @throws Exceptions\Exception
-     */
-    public function getInsertId()
-    {
-        return $this->convertValue(
-            $this->getDriver()->getInsertId()
-        );
-    }
-
-    /**
-     * @return int
-     * @throws Exceptions\Exception
-     */
-    public function getAffectedRows()
-    {
-        return $this->getDriver()->getAffectedRows();
+        return implode('.', [
+            '`' . $this->getConfig('database') . '`',
+            $this->getTableName($table)
+        ]);
     }
 }

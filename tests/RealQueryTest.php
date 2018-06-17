@@ -23,18 +23,38 @@ abstract class RealQueryTest extends TestCase
      */
     protected $table;
 
+    /**
+     * @var array
+     */
+    protected $config = [];
+
+    /**
+     * @var string
+     */
+    protected $db1;
+
+    /**
+     * @var string
+     */
+    protected $db2;
+
     protected function setUp()
     {
-        $this->instance = new Database\Database([
+        $this->db1 = isset($_SERVER['DB_BASE']) ? $_SERVER['DB_BASE'] : 'modx';
+        $this->db2 = isset($_SERVER['DB_BASE2']) ? $_SERVER['DB_BASE2'] : 'laravel';
+
+        $this->config = [
             'host' => isset($_SERVER['DB_HOST']) ? $_SERVER['DB_HOST'] : 'localhost',
-            'database' => isset($_SERVER['DB_BASE']) ? $_SERVER['DB_BASE'] : 'modx',
+            'database' => $this->db1,
             'username' => isset($_SERVER['DB_USER']) ? $_SERVER['DB_USER'] : 'homestead',
             'password' => isset($_SERVER['DB_PASSWORD']) ? $_SERVER['DB_PASSWORD'] : 'secret',
             'prefix' => isset($_SERVER['DB_PREFIX']) ? $_SERVER['DB_PREFIX'] : '{PREFIX}',
             'charset' => isset($_SERVER['DB_CHARSET']) ? $_SERVER['DB_CHARSET'] : 'utf8mb4',
             'method' => isset($_SERVER['DB_METHOD']) ? $_SERVER['DB_METHOD'] : 'SET NAMES',
             'collation' => isset($_SERVER['DB_COLLATION']) ? $_SERVER['DB_COLLATION'] : 'utf8mb4_unicode_ci',
-        ], $this->driver);
+        ];
+
+        $this->instance = new Database\Database($this->config, $this->driver);
 
         $this->instance->setDebug(true)->connect();
 
@@ -47,6 +67,8 @@ abstract class RealQueryTest extends TestCase
             $this->connectorClass,
             $this->instance->getDriver()->getConnect()
         );
+
+        $this->assertEquals('', $this->instance->getLastErrorNo());
     }
 
     public function testDisconnect()
@@ -93,12 +115,17 @@ abstract class RealQueryTest extends TestCase
 
         $this->assertStringStartsWith(
             'OPTIMIZE TABLE',
-            $querys[1]['sql']
+            $querys[0]['sql']
         );
 
         $this->assertStringStartsWith(
             'ALTER TABLE',
-            $querys[2]['sql']
+            $querys[1]['sql']
+        );
+
+        $this->assertRegExp(
+            '/OPTIMIZE TABLE/',
+            $this->instance->renderExecutedQuery()
         );
     }
 
@@ -115,7 +142,7 @@ abstract class RealQueryTest extends TestCase
 
         $this->assertStringStartsWith(
             'ALTER TABLE',
-            $querys[1]['sql']
+            $querys[0]['sql']
         );
     }
 
@@ -346,7 +373,7 @@ abstract class RealQueryTest extends TestCase
 
         $this->assertStringStartsWith(
             'SHOW FIELDS FROM',
-            $querys[1]['sql']
+            $querys[0]['sql']
         );
     }
 
@@ -397,6 +424,8 @@ abstract class RealQueryTest extends TestCase
                 'LIMIT 10',
             ])
         );
+
+        $this->assertGreaterThan(0, $this->instance->getQueriesTime());
     }
 
     public function testMakeArray()
@@ -582,7 +611,7 @@ abstract class RealQueryTest extends TestCase
         );
 
         $this->assertCount(
-            ++$querys,
+            $querys + 1,
             $this->instance->getAllExecutedQuery()
         );
 
@@ -675,28 +704,27 @@ abstract class RealQueryTest extends TestCase
 
         $this->instance->flushExecutedQuery();
 
-        $num = 1;
         $time = 100;
-        $method->invoke($this->instance, $result, $query, $num, $time);
+        $method->invoke($this->instance, $result, $query, $time);
 
         $data = $this->instance->getAllExecutedQuery();
         $this->assertCount(
-            $num, $data
+            1, $data
         );
 
         $this->assertEquals(
-            $query, $data[$num]['sql']
+            $query, $data[0]['sql']
         );
 
         $this->assertEquals(
-            $time, $data[$num]['time']
+            $time, $data[0]['time']
         );
 
         $this->assertEquals(
-            $num, $data[$num]['rows']
+            1, $data[0]['rows']
         );
 
-        $this->assertNotEmpty($data[$num]['path']);
+        $this->assertNotEmpty($data[0]['path']);
     }
 
     public function testGetRow()
@@ -719,6 +747,56 @@ abstract class RealQueryTest extends TestCase
         $this->assertEquals(
             $data,
             $this->instance->getRow($result)
+        );
+
+        try {
+            $this->instance->getRow($result, 'bug');
+            $this->assertTrue(false, 'Need UnknownFetchTypeException');
+        } catch (Database\Exceptions\UnknownFetchTypeException $exception) {
+            $this->assertStringStartsWith(
+                'Unknown get type',
+                $exception->getMessage()
+            );
+        }
+    }
+
+    public function testCheckLastError()
+    {
+        $this->instance->disconnect();
+        $this->assertFalse($this->instance->checkLastError());
+
+        $this->instance->connect();
+
+        $this->instance->setIgnoreErrors(['42000']);
+        try {
+            $this->instance->query('BUG QUERY');
+        } catch (\Exception $exception) {
+        }
+
+        $this->assertTrue($this->instance->checkLastError());
+    }
+
+    public function testSelectDb()
+    {
+        $this->assertEquals(
+            $this->db1,
+            $this->instance->getValue('SELECT DATABASE();')
+        );
+
+        $this->assertTrue(
+            $this->instance->selectDb($this->db2)
+        );
+
+        $this->assertEquals(
+            $this->db2,
+            $this->instance->getValue('SELECT DATABASE();')
+        );
+    }
+
+    public function testSetCharset()
+    {
+        $this->assertTrue(
+            $this->instance->setCharset('utf8mb4')
         );
     }
 }

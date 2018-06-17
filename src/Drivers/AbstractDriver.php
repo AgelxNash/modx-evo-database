@@ -25,47 +25,27 @@ abstract class AbstractDriver implements DriverInterface
     /**
      * {@inheritDoc}
      */
+    abstract public function isConnected();
+
+    /**
+     * {@inheritDoc}
+     */
+    abstract public function getLastError();
+
+    /**
+     * {@inheritDoc}
+     */
+    abstract public function getLastErrorNo();
+
+    /**
+     * {@inheritDoc}
+     */
     abstract public function connect();
 
     /**
      * {@inheritDoc}
      */
     abstract public function disconnect();
-
-    /**
-     * {@inheritDoc}
-     */
-    abstract public function isConnected();
-
-    /**
-     * {@inheritDoc}
-     */
-    abstract public function escape($data);
-
-    /**
-     * {@inheritDoc}
-     */
-    abstract public function getInsertId();
-
-    /**
-     * {@inheritDoc}
-     */
-    abstract public function getAffectedRows();
-
-    /**
-     * {@inheritDoc}
-     */
-    abstract public function getVersion();
-
-    /**
-     * {@inheritDoc}
-     */
-    abstract public function getRecordCount($result);
-
-    /**
-     * {@inheritDoc}
-     */
-    abstract public function setCharset($charset, $collation, $method = null);
 
     /**
      * {@inheritDoc}
@@ -85,7 +65,27 @@ abstract class AbstractDriver implements DriverInterface
     /**
      * {@inheritDoc}
      */
+    abstract public function setCharset($charset, $method = null);
+
+    /**
+     * {@inheritDoc}
+     */
     abstract public function selectDb($name);
+
+    /**
+     * {@inheritDoc}
+     */
+    abstract public function escape($data);
+
+    /**
+     * {@inheritDoc}
+     */
+    abstract public function query($sql);
+
+    /**
+     * {@inheritDoc}
+     */
+    abstract public function getRecordCount($result);
 
     /**
      * {@inheritDoc}
@@ -95,17 +95,17 @@ abstract class AbstractDriver implements DriverInterface
     /**
      * {@inheritDoc}
      */
-    abstract public function query($query);
+    abstract public function getVersion();
 
     /**
      * {@inheritDoc}
      */
-    abstract public function getLastError();
+    abstract public function getInsertId();
 
     /**
      * {@inheritDoc}
      */
-    abstract public function getLastErrorNo();
+    abstract public function getAffectedRows();
 
     /**
      * {@inheritDoc}

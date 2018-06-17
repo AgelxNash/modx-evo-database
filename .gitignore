@@ -19,5 +19,7 @@ Desktop.ini
 .php_cs
 .php_cs.cache
 
+/coverage/
+
 # except do not ignore .gitignore
 !.gitignore

@@ -5,46 +5,6 @@ use AgelxNash\Modx\Evo\Database\Exceptions;
 trait SupportTrait
 {
     /**
-     * @param null|string $key
-     * @return mixed
-     */
-    abstract public function getConfig($key = null);
-
-    /**
-     * @param string $table
-     * @param bool $escape
-     * @return string
-     * @throws Exceptions\Exception
-     */
-    public function getTableName($table, $escape = true)
-    {
-        if (empty($table)) {
-            throw new Exceptions\TableNotDefinedException($table);
-        }
-
-        $out = $this->getConfig('prefix') . $table;
-
-        return $escape ? '`' . $out . '`' : $out;
-    }
-
-    /**
-     * @param string $table
-     * @return string
-     * @throws Exceptions\Exception
-     */
-    public function getFullTableName($table)
-    {
-        if (empty($table)) {
-            throw new Exceptions\TableNotDefinedException($table);
-        }
-
-        return implode('.', [
-            '`' . $this->getConfig('database') . '`',
-            $this->getTableName($table)
-        ]);
-    }
-
-    /**
      * @param $value
      * @return mixed
      */
@@ -120,7 +80,7 @@ trait SupportTrait
     /**
      * @param string|null $value
      * @return string
-     * @throws Exceptions\Exception
+     * @throws Exceptions\InvalidFieldException
      */
     protected function prepareNull($value)
     {
@@ -144,7 +104,8 @@ trait SupportTrait
      * @param int $level
      * @param bool $skipFieldNames
      * @return array|string
-     * @throws Exceptions\Exception
+     * @throws Exceptions\InvalidFieldException
+     * @throws Exceptions\TooManyLoopsException
      */
     protected function prepareValues($data, $level = 1, $skipFieldNames = false)
     {
@@ -238,7 +199,7 @@ trait SupportTrait
     /**
      * @param string|array $data
      * @return string
-     * @throws Exceptions\Exception
+     * @throws Exceptions\InvalidFieldException
      */
     protected function prepareValuesSet($data)
     {
@@ -260,7 +221,7 @@ trait SupportTrait
      * @param string|array $data
      * @param bool $hasArray
      * @return string
-     * @throws Exceptions\Exception
+     * @throws Exceptions\TableNotDefinedException
      */
     protected function prepareFrom($data, $hasArray = false)
     {
@@ -281,7 +242,7 @@ trait SupportTrait
     /**
      * @param array|string $data
      * @return string
-     * @throws Exceptions\Exception
+     * @throws Exceptions\InvalidFieldException
      */
     protected function prepareWhere($data)
     {

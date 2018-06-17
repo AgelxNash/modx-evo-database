@@ -8,8 +8,7 @@ trait ConfigTrait
     protected $config = [];
 
     /**
-     * @param null|string $key
-     * @return mixed
+     * {@inheritDoc}
      */
     public function getConfig($key = null)
     {
@@ -17,8 +16,7 @@ trait ConfigTrait
     }
 
     /**
-     * @param $data
-     * @return $this
+     * {@inheritDoc}
      */
     public function setConfig($data)
     {

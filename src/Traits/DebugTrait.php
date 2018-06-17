@@ -4,14 +4,35 @@ use AgelxNash\Modx\Evo\Database\Exceptions;
 
 trait DebugTrait
 {
+    /**
+     * @var bool
+     */
     protected $debug = false;
+
+    /**
+     * @var array
+     */
     protected $queryCollection = [];
-    protected $queryTime = 0;
-    protected $executedQueries = 0;
+
+    /**
+     * @var int
+     */
+    protected $queriesTime = 0;
+
+    /**
+     * @var string
+     */
     protected $lastQuery = '';
+
+    /**
+     * @var int
+     */
     protected $connectionTime = 0;
 
-    public $ignoreErrors = [
+    /**
+     * @var array
+     */
+    protected $ignoreErrors = [
         '42S22', // SQLSTATE: 42S22 (ER_BAD_FIELD_ERROR) Unknown column '%s' in '%s'
         '42S21', // SQLSTATE: 42S21 (ER_DUP_FIELDNAME) Duplicate column name '%s'
         '42000', // SQLSTATE: 42000 (ER_DUP_KEYNAME) Duplicate key name '%s'
@@ -19,97 +40,55 @@ trait DebugTrait
         '42000' // SQLSTATE: 42000 (ER_CANT_DROP_FIELD_OR_KEY) Can't DROP '%s'; check that column/key exists
     ];
 
+    /**
+     * @var string
+     */
     protected $timeFormat = '%2.5f';
 
     /**
-      * @return mixed
-     * @throws Exceptions\Exception
-      */
+     * {@inheritDoc}
+     */
     abstract public function getDriver();
 
     /**
-     * @param $result
-     * @return int
+     * {@inheritDoc}
      */
     abstract public function getRecordCount($result);
 
     /**
-     * @return int
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
     abstract public function getAffectedRows();
 
     /**
-     * @return string|null
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
-    public function getLastError()
+    public function isDebug()
     {
-        return $this->getDriver()->getLastError();
+        return $this->debug;
     }
 
     /**
-     * @return string|null
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
-    public function getLastErrorNo()
+    public function setDebug($flag)
     {
-        return (string)$this->getDriver()->getLastErrorNo();
-    }
-
-    /**
-     * @return array
-     */
-    public function getIgnoreErrors()
-    {
-        return $this->ignoreErrors;
-    }
-
-    /**
-     * @param int $error
-     * @return DebugTrait
-     */
-    public function addIgnoreErrors($error)
-    {
-        $this->ignoreErrors[] = $error;
+        $this->debug = $flag;
 
         return $this;
     }
 
     /**
-     * @return DebugTrait
-     */
-    public function flushIgnoreErrors()
-    {
-        $this->ignoreErrors = [];
-
-        return $this;
-    }
-
-    /**
-     * @param array $errors
-     * @return DebugTrait
-     */
-    public function setIgnoreErrors(array $errors = [])
-    {
-        $this->flushIgnoreErrors();
-
-        foreach ($errors as $error) {
-            $this->addIgnoreErrors($error);
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param null|string $query
-     * @return bool
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
     public function checkLastError($query = null)
     {
-        if ($this->getIgnoreErrors() === [] || \in_array($this->getLastErrorNo(), $this->getIgnoreErrors(), true)) {
+        if ($this->getDriver()->isConnected() === false || $this->getLastErrorNo() === '') {
             return false;
+        }
+
+        if (\in_array($this->getLastErrorNo(), $this->getIgnoreErrors(), true)) {
+            return true;
         }
 
         throw (new Exceptions\QueryException($this->getLastError()))
@@ -117,13 +96,9 @@ trait DebugTrait
     }
 
     /**
-     * @param mixed $result
-     * @param string $sql
-     * @param int $iteration
-     * @param int $time
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
-    protected function collectQuery($result, $sql, $iteration, $time)
+    public function collectQuery($result, $sql, $time)
     {
         $debug = debug_backtrace();
         array_shift($debug);
@@ -138,7 +113,7 @@ trait DebugTrait
         }
         $path = implode(' > ', array_reverse($path));
 
-        $this->queryCollection[$iteration] = [
+        $data = [
             'sql' => $sql,
             'time' => $time,
             'rows' => (stripos($sql, 'SELECT') === 0 && $this->getDriver()->isResult($result)) ?
@@ -150,18 +125,32 @@ trait DebugTrait
             //      'type' => $modx->event->activePlugin ? 'Plugin' : ($modx->currentSnippet ? 'Snippet' : 'Source code')
             // ]
         ];
+
+        $this->queryCollection[] = $data;
+
+        return $data;
     }
 
     /**
-     * @return string
+     * {@inheritDoc}
+     */
+    public function setLastQuery($query)
+    {
+        $this->lastQuery = (string)$query;
+
+        return $query;
+    }
+
+    /**
+     * {@inheritDoc}
      */
     public function getLastQuery()
     {
-        return $this->lastQuery;
+        return (string)$this->lastQuery;
     }
 
     /**
-     * @return array
+     * {@inheritDoc}
      */
     public function getAllExecutedQuery()
     {
@@ -169,16 +158,107 @@ trait DebugTrait
     }
 
     /**
-     * @return $this
+     * {@inheritDoc}
      */
     public function flushExecutedQuery()
     {
         $this->queryCollection = [];
-        $this->executedQueries = 0;
-        $this->queryTime = 0;
-        $this->lastQuery = '';
+        $this->queriesTime = 0;
+        $this->lastQuery = $this->setLastQuery('');
 
-        return $this;
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function setConnectionTime($value)
+    {
+        $this->connectionTime = $value;
+
+        return $value;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getConnectionTime($format = false)
+    {
+        return $format ? sprintf($this->timeFormat, $this->connectionTime) : $this->connectionTime;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getQueriesTime()
+    {
+        return $this->queriesTime;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function addQueriesTime($time)
+    {
+        $this->queriesTime += $time;
+
+        return $time;
+    }
+
+    /**
+     * @return string
+     */
+    public function renderConnectionTime()
+    {
+        return '<fieldset style="text-align:left">' .
+            '<legend>Database connection</legend>' .
+            'Database connection was created in ' . $this->getConnectionTime(true) . ' s.' .
+            '</fieldset>' .
+            '<br />';
+    }
+
+    /**
+     * @return array
+     */
+    public function getIgnoreErrors()
+    {
+        return $this->ignoreErrors;
+    }
+
+    /**
+     * @param string $error
+     * @return string
+     */
+    public function addIgnoreErrors($error)
+    {
+        $this->ignoreErrors[] = $error;
+
+        return $error;
+    }
+
+    /**
+     * @return bool
+     */
+    public function flushIgnoreErrors()
+    {
+        $this->ignoreErrors = [];
+
+        return true;
+    }
+
+    /**
+     * @param array $errors
+     * @return array
+     */
+    public function setIgnoreErrors(array $errors)
+    {
+        $this->flushIgnoreErrors();
+
+        foreach ($errors as $error) {
+            $this->addIgnoreErrors($error);
+        }
+
+        return $this->getIgnoreErrors();
     }
 
     /**
@@ -208,45 +288,5 @@ trait DebugTrait
         }
 
         return $out;
-    }
-
-    /**
-     * @param bool $format
-     * @return string|float
-     */
-    public function getConnectionTime($format = false)
-    {
-        return $format ? sprintf($this->timeFormat, $this->connectionTime) : $this->connectionTime;
-    }
-
-    /**
-     * @return string
-     */
-    public function renderConnectionTime()
-    {
-        return '<fieldset style="text-align:left">' .
-            '<legend>Database connection</legend>' .
-            'Database connection was created in ' . $this->getConnectionTime(true) . ' s.' .
-            '</fieldset>' .
-            '<br />';
-    }
-
-    /**
-     * @param bool $flag
-     * @return $this
-     */
-    public function setDebug($flag)
-    {
-        $this->debug = $flag;
-
-        return $this;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isDebug()
-    {
-        return $this->debug;
     }
 }

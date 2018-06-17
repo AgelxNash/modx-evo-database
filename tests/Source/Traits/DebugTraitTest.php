@@ -26,6 +26,7 @@ class DebugTraitTest extends TestCase
         );
     }
 
+
     public function testGetAllExecutedQuery()
     {
         $this->assertSame(
@@ -60,8 +61,7 @@ class DebugTraitTest extends TestCase
 
     public function testErrorList()
     {
-        $this->assertInstanceOf(
-            Database\Interfaces\DatabaseInterface::class,
+        $this->assertTrue(
             $this->instance->flushIgnoreErrors()
         );
 
@@ -70,23 +70,25 @@ class DebugTraitTest extends TestCase
             $this->instance->getIgnoreErrors()
         );
 
-        $this->assertInstanceOf(
-            Database\Interfaces\DatabaseInterface::class,
-            $this->instance->addIgnoreErrors(1000)
+        $error = '42S22';
+        $this->assertEquals(
+            $error,
+            $this->instance->addIgnoreErrors($error)
         );
 
         $this->assertEquals(
-            [1000],
+            [$error],
             $this->instance->getIgnoreErrors()
         );
 
-        $this->assertInstanceOf(
-            Database\Interfaces\DatabaseInterface::class,
-            $this->instance->setIgnoreErrors([10, '20'])
+        $errors = ['42000', '42S22'];
+        $this->assertEquals(
+            $errors,
+            $this->instance->setIgnoreErrors($errors)
         );
 
         $this->assertEquals(
-            [10, 20],
+            $errors,
             $this->instance->getIgnoreErrors()
         );
     }

@@ -25,18 +25,24 @@ class IlluminateDriver extends AbstractDriver
      */
     protected $capsule;
 
-    private $affectedRows = 0;
+    /**
+     * @var int
+     */
+    protected $affectedRows = 0;
 
     /**
      * @var array
      */
-    public $lastError;
+    protected $lastError = [];
 
     /**
      * @var string
      */
-    public $lastErrorNo;
+    protected $lastErrorNo = '';
 
+    /**
+     * @var string
+     */
     protected $driver = 'mysql';
 
     /**
@@ -80,7 +86,252 @@ class IlluminateDriver extends AbstractDriver
 
         $this->useEloquent();
 
-        $this->config = $config;
+        $this->setConfig($config);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getConnect()
+    {
+        if (! $this->isConnected()) {
+            $this->connect();
+            if (! $this->conn->getPdo() instanceof PDO) {
+                $this->conn->reconnect();
+            }
+        }
+
+        return $this->conn;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isConnected()
+    {
+        return ($this->conn instanceof Connection && $this->conn->getDatabaseName());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getLastError()
+    {
+        $error = $this->getConnect()->getPdo()->errorInfo();
+        return empty($error[2]) ? (empty($this->lastError[2]) ? '' : $this->lastError[2]) : $error[2];
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getLastErrorNo()
+    {
+        $error = $this->getConnect()->getPdo()->errorInfo();
+        $out = empty($error[0]) || $error[0] === '00000' ? $this->lastErrorNo : $error[0];
+
+        return $out;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function connect()
+    {
+        try {
+            if (! $this->hasConnectionName($this->connection)) {
+                $this->getCapsule()->addConnection([
+                    'driver'    => $this->driver,
+                    'host'      => $this->getConfig('host'),
+                    'database'  => $this->getConfig('database'),
+                    'username'  => $this->getConfig('username'),
+                    'password'  => $this->getConfig('password'),
+                    'charset'   => $this->getConfig('charset'),
+                    'collation' => $this->getConfig('collation'),
+                    'prefix'    => $this->getConfig('prefix'),
+                ], $this->connection);
+            }
+
+            $this->conn = $this->getCapsule()->getConnection($this->connection);
+        } catch (\Exception $exception) {
+            $this->conn = null;
+            throw new Exceptions\ConnectException($exception->getMessage(), $exception->getCode());
+        }
+
+        return $this->conn;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function disconnect()
+    {
+        if ($this->isConnected()) {
+            $this->conn->disconnect();
+        }
+
+        $this->conn = null;
+        $this->lastErrorNo = '';
+        $this->lastError = [];
+
+        return $this;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function isResult($result)
+    {
+        return $result instanceof PDOStatement;
+    }
+
+    /**
+     * @param PDOStatement $result
+     * {@inheritDoc}
+     */
+    public function numFields($result)
+    {
+        return $this->isResult($result) ? $result->columnCount() : 0;
+    }
+
+    /**
+     * @param PDOStatement $result
+     * {@inheritDoc}
+     */
+    public function fieldName($result, $col = 0)
+    {
+        $field = $this->isResult($result) ? $result->getColumnMeta($col) : [];
+        return isset($field['name']) ? $field['name'] : null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function setCharset($charset, $method = null)
+    {
+        if ($method === null) {
+            $method = $this->getConfig('method');
+        }
+
+        $query = $method . ' ' . $charset;
+
+        return (bool)$this->query($query);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function selectDb($name)
+    {
+        return $this->getConnect()->getPdo()->exec('USE ' . $name) === 0;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function escape($data)
+    {
+        /**
+         * It's not secure
+         * But need for backward compatibility
+         */
+
+        $quote = $this->getConnect()->getPdo()->quote($data);
+        return strpos($quote, '\'') === 0 ? mb_substr($quote, 1, -1) : $quote;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function query($sql)
+    {
+        $result = null;
+        try {
+            $pdo = $this->getConnect()->getPdo();
+            $result = $pdo->prepare(
+                $sql,
+                [
+                    \PDO::ATTR_CURSOR => \PDO::CURSOR_SCROLL,
+
+                ]
+            );
+            $result->setFetchMode(\PDO::FETCH_ASSOC);
+            if ($result->execute() === false) {
+                $result = false;
+            }
+            $this->affectedRows = \is_bool($result) ? 0 : $result->rowCount();
+            if ($this->affectedRows === 0 && $this->isResult($result) && 0 !== mb_stripos(trim($sql), 'SELECT')) {
+                $result = true;
+            }
+        } catch (\Exception $exception) {
+            $this->lastError = $this->isResult($result) ? $result->errorInfo() : [];
+            $code = $this->isResult($result) ? $result->errorCode() : '';
+            $this->lastErrorNo = $this->isResult($result) ? (empty($code) ? $exception->getCode() : $code) : '';
+            throw (new Exceptions\QueryException($exception->getMessage(), $exception->getCode()))
+                ->setQuery($sql);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param PDOStatement $result
+     * {@inheritDoc}
+     */
+    public function getRecordCount($result)
+    {
+        return $this->isResult($result) ? $result->rowCount() : 0;
+    }
+
+    /**
+     * @param PDOStatement $result
+     * {@inheritDoc}
+     */
+    public function getRow($result, $mode = 'assoc')
+    {
+        switch ($mode) {
+            case 'assoc':
+                $out = $result->fetch(\PDO::FETCH_ASSOC);
+                break;
+            case 'num':
+                $out = $result->fetch(\PDO::FETCH_NUM);
+                break;
+            case 'object':
+                $out = $result->fetchObject();
+                break;
+            case 'both':
+                $out = $result->fetch(\PDO::FETCH_BOTH);
+                break;
+            default:
+                throw new Exceptions\UnknownFetchTypeException(
+                    "Unknown get type ($mode) specified for fetchRow - must be empty, 'assoc', 'num' or 'both'."
+                );
+        }
+
+        return $out;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getVersion()
+    {
+        return $this->getConnect()->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getInsertId()
+    {
+        return $this->getConnect()->getPdo()->lastInsertId();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getAffectedRows()
+    {
+        return $this->affectedRows;
     }
 
     /**
@@ -118,22 +369,6 @@ class IlluminateDriver extends AbstractDriver
     }
 
     /**
-     * @return Connection
-     * @throws Exceptions\Exception
-     */
-    public function getConnect()
-    {
-        if (! $this->isConnected()) {
-            $this->connect();
-            if (! $this->conn->getPdo() instanceof PDO) {
-                $this->conn->reconnect();
-            }
-        }
-
-        return $this->conn;
-    }
-
-    /**
      * @param $name
      * @return bool
      */
@@ -141,248 +376,5 @@ class IlluminateDriver extends AbstractDriver
     {
         $connections = $this->getCapsule()->getDatabaseManager()->getConnections();
         return isset($connections[$name]);
-    }
-
-    /**
-     * @return Connection
-     * @throws Exceptions\Exception
-     */
-    public function connect()
-    {
-        try {
-            if (! $this->hasConnectionName($this->connection)) {
-                $this->getCapsule()->addConnection([
-                    'driver'    => $this->driver,
-                    'host'      => $this->config['host'],
-                    'database'  => $this->config['database'],
-                    'username'  => $this->config['username'],
-                    'password'  => $this->config['password'],
-                    'charset'   => $this->config['charset'],
-                    'collation' => $this->config['collation'],
-                    'prefix'    => $this->config['prefix'],
-                ], $this->connection);
-            }
-
-            $this->conn = $this->getCapsule()->getConnection($this->connection);
-        } catch (\Exception $exception) {
-            $this->conn = null;
-            throw new Exceptions\ConnectException($exception->getMessage(), $exception->getCode());
-        }
-
-        return $this->conn;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function disconnect()
-    {
-        if ($this->isConnected()) {
-            $this->conn->disconnect();
-        }
-
-        $this->conn = null;
-
-        return $this;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isConnected()
-    {
-        return ($this->conn instanceof Connection && $this->conn->getDatabaseName());
-    }
-
-    /**
-     * @param $data
-     * @return mixed
-     * @throws Exceptions\Exception
-     */
-    public function escape($data)
-    {
-        /**
-         * It's not secure
-         * But need for backward compatibility
-         */
-
-        $quote = $this->getConnect()->getPdo()->quote($data);
-        return strpos($quote, '\'') === 0 ? mb_substr($quote, 1, -1) : $quote;
-    }
-
-    /**
-     * @return mixed
-     * @throws Exceptions\Exception
-     */
-    public function getInsertId()
-    {
-        return $this->getConnect()->getPdo()->lastInsertId();
-    }
-
-    /**
-     * @return int
-     * @throws Exceptions\Exception
-     */
-    public function getAffectedRows()
-    {
-        return $this->affectedRows;
-    }
-
-    /**
-     * @return string
-     * @throws Exceptions\Exception
-     */
-    public function getVersion()
-    {
-        return $this->getConnect()->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION);
-    }
-
-    /**
-     * @param PDOStatement $result
-     * @return int
-     */
-    public function getRecordCount($result)
-    {
-        return $this->isResult($result) ? $result->rowCount() : 0;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function setCharset($charset, $collation, $method = null)
-    {
-        if ($method === null) {
-            $method = $this->config['method'];
-        }
-        $query = $method . ' ' . $charset . ' COLLATE ' . $collation;
-
-        return (bool)$this->query($query);
-    }
-
-    /**
-     * @param $result
-     * @return bool
-     */
-    public function isResult($result)
-    {
-        return $result instanceof PDOStatement;
-    }
-
-    /**
-     * @param PDOStatement $result
-     * @return int
-     */
-    public function numFields($result)
-    {
-        return $this->isResult($result) ? $result->columnCount() : 0;
-    }
-
-    /**
-     * @param PDOStatement $result
-     * @param int $col
-     * @return string|null
-     */
-    public function fieldName($result, $col = 0)
-    {
-        $field = $this->isResult($result) ? $result->getColumnMeta($col) : [];
-        return isset($field['name']) ? $field['name'] : null;
-    }
-
-    /**
-     * @param string $name
-     * @return bool
-     * @throws Exceptions\Exception
-     */
-    public function selectDb($name)
-    {
-        $this->getConnect()->setDatabaseName($name);
-
-        return true;
-    }
-
-    /**
-     * @param PDOStatement $result
-     * @param string $mode
-     * @return array|mixed|object|\stdClass
-     * @throws Exceptions\Exception
-     */
-    public function getRow($result, $mode = 'assoc')
-    {
-        switch ($mode) {
-            case 'assoc':
-                $out = $result->fetch(\PDO::FETCH_ASSOC);
-                break;
-            case 'num':
-                $out = $result->fetch(\PDO::FETCH_NUM);
-                break;
-            case 'object':
-                $out = $result->fetchObject();
-                break;
-            case 'both':
-                $out = $result->fetch(\PDO::FETCH_BOTH);
-                break;
-            default:
-                throw new Exceptions\UnknownFetchTypeException(
-                    "Unknown get type ($mode) specified for fetchRow - must be empty, 'assoc', 'num' or 'both'."
-                );
-        }
-
-        return $out;
-    }
-
-    /**
-     * @param string $query
-     * @return mixed
-     * @throws Exceptions\Exception
-     */
-    public function query($query)
-    {
-        $result = null;
-        try {
-            $result = $this->getConnect()->getPdo()->prepare(
-                $query,
-                [
-                    \PDO::ATTR_CURSOR => \PDO::CURSOR_SCROLL
-                ]
-            );
-            $result->setFetchMode(\PDO::FETCH_ASSOC);
-            if ($result->execute() === false) {
-                $result = false;
-            }
-            $this->affectedRows = \is_bool($result) ? 0 : $result->rowCount();
-            if ($this->affectedRows === 0 && $this->isResult($result) && 0 !== mb_stripos(trim($query), 'SELECT')) {
-                $result = true;
-            }
-        } catch (\Exception $exception) {
-            $this->lastError = $this->isResult($result) ? $result->errorInfo() : [];
-            $code = $this->isResult($result) ? $result->errorCode() : '';
-            $this->lastErrorNo = $this->isResult($result) ? (empty($code) ? $exception->getCode() : $code) : '';
-            throw (new Exceptions\QueryException($exception->getMessage(), $exception->getCode()))
-                ->setQuery($query);
-        }
-
-        return $result;
-    }
-
-    /**
-     * @return string|null
-     * @throws Exceptions\Exception
-     */
-    public function getLastError()
-    {
-        $pdo = $this->getConnect()->getPdo();
-        $error = $pdo->errorInfo();
-        return (string)(isset($error[2]) ? $error[2] : $this->lastError[2]);
-    }
-
-    /**
-     * @return string|null
-     * @throws Exceptions\Exception
-     */
-    public function getLastErrorNo()
-    {
-        $pdo = $this->getConnect()->getPdo();
-        $error = $pdo->errorInfo();
-        return (string)(isset($error[1]) ? $error[1] : $this->lastErrorNo);
     }
 }

@@ -5,6 +5,9 @@ use mysqli;
 use mysqli_result;
 use AgelxNash\Modx\Evo\Database\Drivers\MySqliDriver;
 
+/**
+ * @property MySqliDriver $instance
+ */
 class MySqliQuery extends RealQueryTest
 {
     protected $driver = MySqliDriver::class;

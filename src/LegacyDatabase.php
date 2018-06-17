@@ -48,7 +48,7 @@ class LegacyDatabase extends AbstractDatabase
      * @param $tableName
      * @param bool $force
      * @return null|string|string[]
-     * @throws Exceptions\Exception
+     * @throws Exceptions\TableNotDefinedException
      */
     public function replaceFullTableName($tableName, $force = false)
     {
@@ -68,12 +68,19 @@ class LegacyDatabase extends AbstractDatabase
     }
 
     /**
-     * @param mixed $sql
-     * @return mixed
-     * @throws Exceptions\Exception
+     * {@inheritDoc}
      */
     public function query($sql)
     {
-        return parent::query($this->replaceFullTableName($sql));
+        $out = [];
+        if (\is_array($sql)) {
+            foreach ($sql as $query) {
+                $out[] = parent::query($this->replaceFullTableName($query));
+            }
+        } else {
+            $out = parent::query($this->replaceFullTableName($sql));
+        }
+
+        return $out;
     }
 }

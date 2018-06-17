@@ -21,6 +21,7 @@ build:
         variables:
           DB_HOST: '127.0.0.1'
           DB_BASE: 'modx'
+          DB_BASE2: 'laravel'
           DB_USER: 'root'
           DB_PASSWORD: ''
           DB_PREFIX: '{PREFIX}'
@@ -31,6 +32,7 @@ build:
         before:
             - mysql -h 127.0.0.1 -u root -e "SET GLOBAL sql_mode = ''"
             - mysql -h 127.0.0.1 -u root -e 'create database modx'
+            - mysql -h 127.0.0.1 -u root -e 'create database laravel'
             - mysql -h 127.0.0.1 -u root modx < install/tables/site_content.sql
             - mysql -h 127.0.0.1 -u root modx < install/data/site_content.sql
     nodes:

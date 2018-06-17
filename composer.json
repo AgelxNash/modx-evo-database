@@ -37,13 +37,15 @@
     "phpmd": "phpmd src/ text phpmd.xml",
     "phpcs": "phpcs",
     "php-cs-fix": "php-cs-fixer fix",
-    "phpunit": "phpunit --coverage-text --colors"
+    "phpunit": "phpunit --coverage-text --colors",
+    "coverage": "phpunit --colors --coverage-html ./coverage"
   },
   "scripts-descriptions": {
     "phpmd": "Run PHP Mess Detector",
     "phpcs": "Run PHP CodeSniffer",
     "php-cs-fix": "Run PHP Coding Standards Fixer",
-    "phpunit": "Run PhpUnit test"
+    "phpunit": "Run PhpUnit test",
+    "coverage": "Generating code coverage report in HTML format"
   },
   "config": {
     "preferred-install": "dist",

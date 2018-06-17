@@ -5,6 +5,9 @@ use PDOStatement;
 use AgelxNash\Modx\Evo\Database\Drivers\IlluminateDriver;
 use Illuminate;
 
+/**
+ * @property IlluminateDriver $instance
+ */
 class IlluminateQueryTest extends RealQueryTest
 {
     protected $driver = IlluminateDriver::class;

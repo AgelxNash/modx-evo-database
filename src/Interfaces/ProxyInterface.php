@@ -6,16 +6,19 @@ interface ProxyInterface extends ConfigInterface
 {
     /**
      * @return string|null
+     * @throws Exceptions\ConnectException
      */
     public function getLastError();
 
     /**
      * @return string|null
+     * @throws Exceptions\ConnectException
      */
     public function getLastErrorNo();
 
     /**
      * @return mixed
+     * @throws Exceptions\ConnectException
      */
     public function connect();
 
@@ -47,24 +50,28 @@ interface ProxyInterface extends ConfigInterface
      * @param string $charset
      * @param null|string $method
      * @return bool
+     * @throws Exceptions\Exception
      */
     public function setCharset($charset, $method = null);
 
     /**
      * @param string $name
      * @return bool
+     * @throws Exceptions\Exception
      */
     public function selectDb($name);
 
     /**
      * @param $data
      * @return mixed
+     * @throws Exceptions\Exception
      */
     public function escape($data);
 
     /**
      * @param string $sql
      * @return mixed
+     * @throws Exceptions\Exception
      */
     public function query($sql);
 
@@ -78,22 +85,25 @@ interface ProxyInterface extends ConfigInterface
      * @param $result
      * @param string $mode
      * @return mixed
-     * @throws Exceptions\UnknownFetchTypeException
+     * @throws Exceptions\Exception
      */
     public function getRow($result, $mode = 'assoc');
 
     /**
      * @return string
+     * @throws Exceptions\Exception
      */
     public function getVersion();
 
     /**
      * @return mixed
+     * @throws Exceptions\Exception
      */
     public function getInsertId();
 
     /**
      * @return int
+     * @throws Exceptions\Exception
      */
     public function getAffectedRows();
 

@@ -47,6 +47,7 @@ class IlluminateDriver extends AbstractDriver
 
     /**
      * {@inheritDoc}
+     * @throws \ReflectionException
      */
     public function __construct(array $config = [], $connection = 'default')
     {
@@ -91,6 +92,7 @@ class IlluminateDriver extends AbstractDriver
 
     /**
      * {@inheritDoc}
+     * @return Connection
      */
     public function getConnect()
     {
@@ -100,7 +102,6 @@ class IlluminateDriver extends AbstractDriver
                 $this->conn->reconnect();
             }
         }
-
         return $this->conn;
     }
 
@@ -317,7 +318,7 @@ class IlluminateDriver extends AbstractDriver
     }
 
     /**
-     * {@inheritDoc}
+     * @return int
      */
     public function getAffectedRows()
     {
@@ -337,6 +338,7 @@ class IlluminateDriver extends AbstractDriver
     /**
      * @param string $sql
      * @return PDOStatement|bool
+     * @throws Exceptions\ConnectException
      */
     public function prepare($sql)
     {

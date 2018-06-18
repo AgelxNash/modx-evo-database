@@ -25,6 +25,7 @@ class MySqliDriver extends AbstractDriver
 
     /**
      * {@inheritDoc}
+     * @return mysqli
      */
     public function getConnect()
     {
@@ -129,6 +130,7 @@ class MySqliDriver extends AbstractDriver
 
     /**
      * {@inheritDoc}
+     * @throws \ReflectionException
      */
     public function setCharset($charset, $method = null)
     {

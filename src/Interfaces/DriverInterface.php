@@ -12,6 +12,7 @@ interface DriverInterface extends ProxyInterface
 
     /**
      * @return mixed
+     * @throws Exceptions\ConnectException
      */
     public function getConnect();
 

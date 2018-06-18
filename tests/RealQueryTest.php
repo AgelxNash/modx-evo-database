@@ -556,7 +556,8 @@ abstract class RealQueryTest extends TestCase
             $this->assertTrue(true);
         }
 
-        $this->assertTrue(
+        $this->assertGreaterThan(
+            0,
             $this->instance->insert(
                 ['pagetitle'],
                 $table,
@@ -568,7 +569,8 @@ abstract class RealQueryTest extends TestCase
 
         $this->instance->truncate($table);
 
-        $this->assertTrue(
+        $this->assertGreaterThan(
+            0,
             $this->instance->insert(
                 ['pagetitle'],
                 $table,
@@ -580,7 +582,8 @@ abstract class RealQueryTest extends TestCase
 
         $this->instance->truncate($table);
 
-        $this->assertTrue(
+        $this->assertGreaterThan(
+            0,
             $this->instance->insert(
                 ['pagetitle'],
                 $table,

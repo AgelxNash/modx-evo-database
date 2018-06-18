@@ -435,7 +435,11 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface, Interfa
             "INSERT INTO {$table} ({$useFields}) SELECT {$fromFields} FROM {$fromTable} {$where} {$limit}"
         );
 
-        return $this->isResult($lid) ? true : $lid;
+        $lid = $this->isResult($lid) ? true : $lid;
+        if ($lid === true && $this->getInsertId() > 0) {
+            $lid = $this->getInsertId();
+        }
+        return $lid;
     }
 
     /**

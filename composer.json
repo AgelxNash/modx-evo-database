@@ -21,7 +21,8 @@
   },
   "suggest": {
     "illuminate/database": "to use the IlluminateDriver",
-    "illuminate/events": "to use observers with Eloquent"
+    "illuminate/events": "to use observers with Eloquent",
+    "illuminate/pagination": "to use paginate"
   },
   "autoload":{
     "psr-4": {

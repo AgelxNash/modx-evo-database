@@ -45,6 +45,8 @@ class IlluminateDriver extends AbstractDriver
      */
     protected $driver = 'mysql';
 
+    private $elapsedTimeMethod;
+
     /**
      * {@inheritDoc}
      * @throws \ReflectionException
@@ -90,6 +92,22 @@ class IlluminateDriver extends AbstractDriver
         $this->setConfig($config);
     }
 
+    /**
+     * Get the elapsed time since a given starting point.
+     *
+     * @param  int    $start
+     * @return float
+     */
+    protected function getElapsedTime($start)
+    {
+        if ($this->elapsedTimeMethod === null) {
+            $reflection = new ReflectionClass($this->getConnect());
+            $this->elapsedTimeMethod = $reflection->getMethod('getElapsedTime');
+            $this->elapsedTimeMethod->setAccessible(true);
+        }
+
+        return $this->elapsedTimeMethod->invoke($this->getConnect(), $start);
+    }
     /**
      * {@inheritDoc}
      * @return Connection
@@ -247,12 +265,15 @@ class IlluminateDriver extends AbstractDriver
     public function query($sql)
     {
         try {
+            $start = microtime(true);
+
             $result = $this->prepare($sql);
             $this->execute($result);
 
             if ($this->saveAffectedRows($result) === 0 && $this->isResult($result) && ! $this->isSelectQuery($sql)) {
                 $result = true;
             }
+            $this->getConnect()->logQuery($sql, [], $this->getElapsedTime($start));
         } catch (\Exception $exception) {
             $this->lastError = $this->isResult($result) ? $result->errorInfo() : [];
             $code = $this->isResult($result) ? $result->errorCode() : '';

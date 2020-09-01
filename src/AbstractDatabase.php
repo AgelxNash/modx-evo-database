@@ -505,8 +505,11 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface, Interfa
         }
 
         $out = $this->getConfig('prefix') . $table;
-
-        return $escape ? '`' . $out . '`' : $out;
+        $s = '`';
+        if ($this->config['driver'] === 'pgsql') {
+            $s = '';
+        }
+        return $escape ? $s . $out . $s : $out;
     }
 
     /**
@@ -518,10 +521,16 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface, Interfa
             throw new Exceptions\TableNotDefinedException($table);
         }
 
-        return implode('.', [
-            '`' . $this->getConfig('database') . '`',
-            $this->getTableName($table)
-        ]);
+        if ($this->config['driver'] === 'pgsql') {
+            $db = $this->getTableName($table);
+        }else{
+            $db = implode('.', [
+                '`' . $this->getConfig('database') . '`',
+                $this->getTableName($table)
+            ]);
+        }
+        return $db;
+
     }
 
     /**

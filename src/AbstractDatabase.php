@@ -500,7 +500,7 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface, Interfa
      */
     public function getTableName($table, $escape = true)
     {
-        return $this->getDriver()->getTableName($table, $escape = true);
+        return $this->getDriver()->getTableName($table, $escape);
     }
 
     /**

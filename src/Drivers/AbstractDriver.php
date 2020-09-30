@@ -188,4 +188,35 @@ abstract class AbstractDriver implements DriverInterface
 
         return $out;
     }
+
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getTableName($table, $escape = true)
+    {
+        if (empty($table)) {
+            throw new Exceptions\TableNotDefinedException($table);
+        }
+
+        $out = $this->getConfig('prefix') . $table;
+
+        return $escape ? '`' . $out . '`' : $out;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getFullTableName($table)
+    {
+        if (empty($table)) {
+            throw new Exceptions\TableNotDefinedException($table);
+        }
+
+        return implode('.', [
+            '`' . $this->getConfig('database') . '`',
+            $this->getTableName($table)
+        ]);
+    }
 }

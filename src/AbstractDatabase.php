@@ -500,13 +500,7 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface, Interfa
      */
     public function getTableName($table, $escape = true)
     {
-        if (empty($table)) {
-            throw new Exceptions\TableNotDefinedException($table);
-        }
-
-        $out = $this->getConfig('prefix') . $table;
-
-        return $escape ? '`' . $out . '`' : $out;
+        return $this->getDriver()->getTableName($table, $escape = true);
     }
 
     /**
@@ -514,14 +508,7 @@ abstract class AbstractDatabase implements Interfaces\DatabaseInterface, Interfa
      */
     public function getFullTableName($table)
     {
-        if (empty($table)) {
-            throw new Exceptions\TableNotDefinedException($table);
-        }
-
-        return implode('.', [
-            '`' . $this->getConfig('database') . '`',
-            $this->getTableName($table)
-        ]);
+        return $this->getDriver()->getFullTableName($table);
     }
 
     /**

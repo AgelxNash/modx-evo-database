@@ -133,6 +133,19 @@ interface ProxyInterface extends ConfigInterface
     public function getTableMetaData($result);
 
     /**
+     * @param string $table
+     * @param bool $escape
+     * @return string
+     */
+    public function getTableName($table, $escape = true);
+
+    /**
+     * @param string $table
+     * @return string
+     */
+    public function getFullTableName($table);
+
+    /**
      * @param int $flag
      * @param string $name
      * @return bool

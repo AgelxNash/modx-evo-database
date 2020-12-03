@@ -5,16 +5,16 @@
 ---------
 #### MySQLi
 ```php
-$DB = new AgelxNash\Modx\Evo\Database\Database(
-    'localhost',
-    'modx',
-    'homestead',
-    'secret',
-    'modx_',
-    'utf8mb4',
-    'SET NAMES',
-    'utf8mb4_unicode_ci',
-);
+$DB = new AgelxNash\Modx\Evo\Database\Database([
+    'host' => 'localhost',
+    'database' => 'modx',
+    'username' => 'homestead',
+    'password' => 'secret',
+    'prefix' => 'modx_',
+    'charset' => 'utf8mb4',
+    'method' => 'SET NAMES',
+    'collation' => 'utf8mb4_unicode_ci',
+]);
 $DB->setDebug(true);
 $DB->connect();
 $table = $DB->getFullTableName('site_content');
@@ -41,14 +41,16 @@ foreach ($DB->makeArray($result) as $item) {
 
 ```php
 $DB = new AgelxNash\Modx\Evo\Database\Database(
-    'localhost',
-    'modx',
-    'homestead',
-    'secret',
-    'modx_',
-    'utf8mb4',
-    'SET NAMES',
-    'utf8mb4_unicode_ci',
+    [
+        'host' => 'localhost',
+        'database' => 'modx',
+        'username' => 'homestead',
+        'password' => 'secret',
+        'prefix' => 'modx_',
+        'charset' => 'utf8mb4',
+        'method' => 'SET NAMES',
+        'collation' => 'utf8mb4_unicode_ci',
+    ],
     AgelxNash\Modx\Evo\Database\Drivers\IlluminateDriver::class
 );
 $DB->connect();
@@ -64,15 +66,15 @@ $results = Illuminate\Database\Capsule\Manager::table('site_content')
     ->orderBy('pagetitle', 'DESC')
     ->limit(10)
     ->get();
-foreach ($out as $item) {
+foreach ($results as $item) {
     echo "\t [ DOCUMENT #ID " . $item->id . ' ] ' . $item->pagetitle . PHP_EOL;
 }
 
-$out = AgelxNash\Modx\Evo\Database\Models\SiteContent::where('parent', '=', 0)
+$results = AgelxNash\Modx\Evo\Database\Models\SiteContent::where('parent', '=', 0)
     ->orderBy('pagetitle', 'DESC')
     ->limit(10)
     ->get();
-foreach ($out as $item) {
+foreach ($results as $item) {
     echo "\t [ DOCUMENT #ID " . $item->id . ' ] ' . $item->pagetitle . PHP_EOL;
 }
 

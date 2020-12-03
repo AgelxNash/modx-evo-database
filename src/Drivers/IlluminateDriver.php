@@ -53,8 +53,20 @@ class IlluminateDriver extends AbstractDriver
      */
     public function __construct(array $config = [], $connection = 'default')
     {
-        $this->capsule = new Capsule;
-        $this->getCapsule()->setAsGlobal();
+        $reflection = new ReflectionClass(Capsule::class);
+        $property = $reflection->getProperty('instance');
+        $property->setAccessible(true);
+        /**
+         * @var Capsule|null $capsule
+         */
+        $capsule = $property->getValue(new Capsule);
+        if ($capsule === null) {
+            $this->capsule = new Capsule;
+
+            $this->getCapsule()->setAsGlobal();
+        } else {
+            $this->capsule = $capsule;
+        }
 
         if ($this->hasConnectionName($connection)) {
             if (empty($config)) {
